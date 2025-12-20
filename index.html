@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SubTrack - 订阅隐私管理</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+    <script type="importmap">
+        {
+            "imports": {
+                "octokit": "https://esm.sh/@octokit/core"
+            }
+        }
+    </script>
+</head>
+<body class="bg-slate-50 text-slate-900">
+    <div id="app" class="min-h-screen flex flex-col md:flex-row" v-cloak>
+        <!-- 侧边栏：配置面板 -->
+        <aside class="w-full md:w-80 bg-white border-r p-6 space-y-6">
+            <h1 class="text-xl font-bold text-indigo-600 flex items-center">
+                <span class="mr-2">🔐</span> SubTrack 
+            </h1>
+            
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold uppercase text-slate-500 mb-1">GitHub Token</label>
+                    <input v-model="config.token" type="password" class="w-full border rounded px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="ghp_xxxxxxxx">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold uppercase text-slate-500 mb-1">仓库路径 (Owner/Repo)</label>
+                    <input v-model="config.repo" type="text" class="w-full border rounded px-3 py-2 text-sm" placeholder="username/my-subs">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold uppercase text-slate-500 mb-1">主加密密钥 (Master Key)</label>
+                    <input v-model="config.masterKey" type="password" class="w-full border rounded px-3 py-2 text-sm" placeholder="用于加密JSON数据">
+                </div>
+                <button @click="saveConfig" class="w-full bg-slate-800 text-white py-2 rounded text-sm hover:bg-slate-700 transition">保存配置到本地</button>
+            </div>
+
+            <hr>
+
+            <div class="flex flex-col space-y-2">
+                <button @click="loadData" :disabled="loading" class="w-full bg-indigo-600 text-white py-2 rounded font-medium disabled:opacity-50">
+                    {{ loading ? '同步中...' : '从 GitHub 拉取并解密' }}
+                </button>
+                <button @click="uploadData" :disabled="loading || items.length === 0" class="w-full border border-indigo-600 text-indigo-600 py-2 rounded font-medium hover:bg-indigo-50">
+                    加密并同步至 GitHub
+                </button>
+            </div>
+        </aside>
+
+        <!-- 主界面：订阅列表 -->
+        <main class="flex-1 p-8">
+            <div class="max-w-4xl mx-auto">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-2xl font-bold">我的订阅</h2>
+                    <button @click="showAddForm = !showAddForm" class="bg-green-500 text-white px-4 py-2 rounded-lg shadow hover:bg-green-600 transition">
+                        + 添加订阅
+                    </button>
+                </div>
+
+                <!-- 添加表单 -->
+                <div v-if="showAddForm" class="bg-white p-6 rounded-xl shadow-sm border mb-8 animate-slide-down">
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                        <input v-model="newSub.name" type="text" placeholder="服务名称 (例: Netflix)" class="border rounded p-2 text-sm">
+                        <input v-model="newSub.price" type="number" placeholder="金额" class="border rounded p-2 text-sm">
+                        <select v-model="newSub.currency" class="border rounded p-2 text-sm">
+                            <option value="CNY">CNY (￥)</option>
+                            <option value="USD">USD ($)</option>
+                            <option value="HKD">HKD ($)</option>
+                        </select>
+                        <input v-model="newSub.nextDate" type="date" class="border rounded p-2 text-sm">
+                    </div>
+                    <div class="mt-4 flex justify-end space-x-2">
+                        <button @click="showAddForm = false" class="px-4 py-2 text-slate-500">取消</button>
+                        <button @click="addSubscription" class="bg-indigo-600 text-white px-6 py-2 rounded-lg">确认添加</button>
+                    </div>
+                </div>
+
+                <!-- 列表展示 -->
+                <div class="bg-white rounded-xl shadow-sm border overflow-hidden">
+                    <table class="w-full text-left">
+                        <thead class="bg-slate-50 border-b">
+                            <tr>
+                                <th class="px-6 py-3 text-xs font-semibold uppercase text-slate-500">服务</th>
+                                <th class="px-6 py-3 text-xs font-semibold uppercase text-slate-500">费用</th>
+                                <th class="px-6 py-3 text-xs font-semibold uppercase text-slate-500">下次计费</th>
+                                <th class="px-6 py-3 text-xs font-semibold uppercase text-slate-500">状态</th>
+                                <th class="px-6 py-3 text-xs font-semibold uppercase text-slate-500">操作</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y">
+                            <tr v-for="(item, index) in items" :key="index" class="hover:bg-slate-50 transition">
+                                <td class="px-6 py-4 font-medium">{{ item.name }}</td>
+                                <td class="px-6 py-4">{{ item.price }} {{ item.currency }}</td>
+                                <td class="px-6 py-4 text-sm">{{ item.nextDate }}</td>
+                                <td class="px-6 py-4">
+                                    <span :class="getDaysClass(item.nextDate)" class="text-xs px-2 py-1 rounded-full font-bold">
+                                        还有 {{ calculateDays(item.nextDate) }} 天
+                                    </span>
+                                </td>
+                                <td class="px-6 py-4">
+                                    <button @click="removeItem(index)" class="text-red-400 hover:text-red-600">删除</button>
+                                </td>
+                            </tr>
+                            <tr v-if="items.length === 0">
+                                <td colspan="5" class="px-6 py-10 text-center text-slate-400">暂无数据，请拉取或手动添加</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script type="module">
+        import { createApp, ref, onMounted } from 'https://unpkg.com/vue@3/dist/vue.global.js';
+        import { Octokit } from "octokit";
+
+        createApp({
+            setup() {
+                const items = ref([]);
+                const loading = ref(false);
+                const showAddForm = ref(false);
+                const config = ref({
+                    token: '',
+                    repo: '',
+                    masterKey: ''
+                });
+                const newSub = ref({ name: '', price: '', currency: 'CNY', nextDate: '' });
+                const currentSha = ref(''); // 用于记录 GitHub 文件的 SHA
+
+                onMounted(() => {
+                    const saved = localStorage.getItem('sub_manager_config');
+                    if (saved) config.value = JSON.parse(saved);
+                });
+
+                const saveConfig = () => {
+                    localStorage.setItem('sub_manager_config', JSON.stringify(config.value));
+                    alert('配置已本地保存');
+                };
+
+                // 从 GitHub 拉取并解密
+                const loadData = async () => {
+                    if (!config.value.token || !config.value.repo || !config.value.masterKey) return alert('请先完善配置');
+                    loading.value = true;
+                    try {
+                        const [owner, repo] = config.value.repo.split('/');
+                        const octokit = new Octokit({ auth: config.value.token });
+                        
+                        const { data } = await octokit.request('GET /repos/{owner}/{repo}/contents/{path}', {
+                            owner, repo, path: 'data/subscriptions.json.enc'
+                        });
+                        
+                        currentSha.value = data.sha;
+                        const encryptedText = atob(data.content);
+                        const bytes = CryptoJS.AES.decrypt(encryptedText, config.value.masterKey);
+                        const decryptedData = bytes.toString(CryptoJS.enc.Utf8);
+                        
+                        items.value = JSON.parse(decryptedData);
+                    } catch (e) {
+                        console.error(e);
+                        alert('读取失败：请检查 Token、路径及 MasterKey 是否匹配');
+                    } finally {
+                        loading.value = false;
+                    }
+                };
+
+                // 加密并上传到 GitHub
+                const uploadData = async () => {
+                    loading.value = true;
+                    try {
+                        const [owner, repo] = config.value.repo.split('/');
+                        const octokit = new Octokit({ auth: config.value.token });
+                        
+                        const jsonStr = JSON.stringify(items.value);
+                        const encrypted = CryptoJS.AES.encrypt(jsonStr, config.value.masterKey).toString();
+
+                        await octokit.request('PUT /repos/{owner}/{repo}/contents/{path}', {
+                            owner, repo,
+                            path: 'data/subscriptions.json.enc',
+                            message: 'Update subs from Web UI',
+                            content: btoa(encrypted),
+                            sha: currentSha.value || undefined
+                        });
+                        alert('同步成功！');
+                    } catch (e) {
+                        alert('同步失败：' + e.message);
+                    } finally {
+                        loading.value = false;
+                    }
+                };
+
+                const addSubscription = () => {
+                    if (!newSub.value.name || !newSub.value.nextDate) return alert('请填写完整信息');
+                    items.value.push({ ...newSub.value });
+                    newSub.value = { name: '', price: '', currency: 'CNY', nextDate: '' };
+                    showAddForm.value = false;
+                };
+
+                const removeItem = (index) => {
+                    if (confirm('确定删除吗？')) items.value.splice(index, 1);
+                };
+
+                // 工具函数
+                const calculateDays = (dateStr) => {
+                    const diff = new Date(dateStr) - new Date();
+                    return Math.ceil(diff / (1000 * 60 * 60 * 24));
+                };
+
+                const getDaysClass = (dateStr) => {
+                    const days = calculateDays(dateStr);
+                    if (days <= 3) return 'bg-red-100 text-red-600';
+                    if (days <= 7) return 'bg-orange-100 text-orange-600';
+                    return 'bg-green-100 text-green-600';
+                };
+
+                return {
+                    config, items, loading, showAddForm, newSub,
+                    saveConfig, loadData, uploadData, addSubscription, removeItem,
+                    calculateDays, getDaysClass
+                };
+            }
+        }).mount('#app');
+    </script>
+
+    <style>
+        [v-cloak] { display: none; }
+        @keyframes slide-down {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-slide-down { animation: slide-down 0.3s ease-out; }
+    </style>
+</body>
+</html>

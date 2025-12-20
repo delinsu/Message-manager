@@ -1,0 +1,26 @@
+name: Daily Subscription Check
+
+on:
+  schedule:
+    - cron: '0 1 * * *' # 每天北京时间上午9点左右运行
+  workflow_dispatch:      # 允许手动触发测试
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+          
+      - name: Install dependencies
+        run: pip install -r scripts/requirements.txt
+        
+      - name: Run check
+        env:
+          MASTER_KEY: ${{ secrets.MASTER_KEY }}
+          BARK_URL: ${{ secrets.BARK_URL }}
+        run: python scripts/check_expiry.py
