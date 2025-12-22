@@ -1,0 +1,7 @@
+{
+  "name": "subtrack-checker",
+  "version": "1.0.0",
+  "dependencies": {
+    "crypto-js": "^4.1.1"
+  }
+}

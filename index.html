@@ -3,18 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SubTrack 2.0 - 订阅管理专家</title>
-    <!-- 引入 Tailwind CSS 和 DaisyUI -->
+    <title>SubTrack 2.0 - 自动化版</title>
     <link href="https://cdn.jsdelivr.net/npm/daisyui@4.4.19/dist/full.min.css" rel="stylesheet" type="text/css" />
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- 引入 Lucide 图标库 -->
     <script src="https://unpkg.com/lucide@latest"></script>
-    <!-- 引入 CryptoJS -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
         body { font-family: 'Inter', sans-serif; background-color: #f8fafc; }
-        .glass-card { background: rgba(255, 255, 255, 0.8); backdrop-filter: blur(10px); }
     </style>
 </head>
 <body>
@@ -22,125 +18,112 @@
 <div class="drawer">
     <input id="settings-drawer" type="checkbox" class="drawer-toggle" />
     
-    <!-- 主内容区 -->
     <div class="drawer-content flex flex-col min-h-screen">
         <!-- 导航栏 -->
         <div class="navbar bg-base-100 shadow-sm px-4 lg:px-8">
-            <div class="flex-1">
-                <div class="flex items-center gap-2">
-                    <div class="bg-primary p-2 rounded-lg text-white">
-                        <i data-lucide="layers" class="w-6 h-6"></i>
-                    </div>
-                    <span class="text-xl font-bold tracking-tight">SubTrack <span class="text-primary text-sm font-normal">Pro</span></span>
+            <div class="flex-1 text-xl font-bold tracking-tight flex items-center gap-2">
+                <div class="bg-primary p-2 rounded-lg text-white">
+                    <i data-lucide="layers" class="w-6 h-6"></i>
+                </div>
+                SubTrack
+                <!-- 这里的状态指示灯很有用 -->
+                <div id="sync-status" class="badge badge-ghost badge-sm gap-1 ml-2 opacity-50">
+                    <i data-lucide="cloud" class="w-3 h-3"></i> 待命
                 </div>
             </div>
-            <div class="flex-none gap-2">
-                <button onclick="fetchLatestData()" class="btn btn-ghost btn-circle">
-                    <i data-lucide="refresh-cw" class="w-5 h-5"></i>
-                </button>
+            <div class="flex-none">
                 <label for="settings-drawer" class="btn btn-ghost btn-circle drawer-button">
                     <i data-lucide="settings" class="w-5 h-5"></i>
                 </label>
             </div>
         </div>
 
-        <!-- 页面主体 -->
         <main class="flex-grow p-4 lg:p-8 max-w-6xl mx-auto w-full space-y-8">
-            
-            <!-- 第一部分：汇总仪表盘 (Statistics) -->
+            <!-- 汇总仪表盘 -->
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <!-- 总支出卡片 -->
                 <div class="stats shadow bg-primary text-primary-content">
-                    <div class="stat">
-                        <div class="stat-title text-primary-content/70">预估月支出</div>
-                        <div id="total-monthly" class="stat-value text-3xl">¥ 0.00</div>
-                        <div class="stat-desc text-primary-content/70">所有激活订阅累计</div>
+                    <div class="stat text-center">
+                        <div class="stat-title text-primary-content/70 text-xs">月度支出预估</div>
+                        <div id="total-monthly" class="stat-value text-2xl">¥ 0.00</div>
                     </div>
                 </div>
-                
-                <!-- 即将过期卡片 -->
                 <div class="stats shadow bg-white">
-                    <div class="stat">
-                        <div class="stat-title text-gray-500">即将续费 (30天内)</div>
-                        <div id="upcoming-count" class="stat-value text-3xl text-warning">0</div>
-                        <div class="stat-actions">
-                            <button class="btn btn-xs btn-outline btn-warning" onclick="filterBy('upcoming')">查看详情</button>
-                        </div>
+                    <div class="stat text-center">
+                        <div class="stat-title text-gray-500 text-xs">即将续费 (30天内)</div>
+                        <div id="upcoming-count" class="stat-value text-2xl text-warning">0</div>
                     </div>
                 </div>
-
-                <!-- 订阅总数卡片 -->
-                <div class="stats shadow bg-white text-gray-800">
-                    <div class="stat">
-                        <div class="stat-title text-gray-500">活跃订阅</div>
-                        <div id="active-count" class="stat-value text-3xl">0</div>
-                        <div class="stat-desc">项目运行中</div>
+                <div class="stats shadow bg-white">
+                    <div class="stat text-center">
+                        <div class="stat-title text-gray-500 text-xs text-center">活跃订阅</div>
+                        <div id="active-count" class="stat-value text-2xl">0</div>
                     </div>
                 </div>
             </div>
 
-            <!-- 第二部分：操作栏 -->
-            <div class="flex flex-col md:flex-row justify-between items-center gap-4">
-                <div class="tabs tabs-boxed bg-gray-100 p-1">
-                    <a class="tab tab-active" onclick="renderUI('all')">全部</a>
-                    <a class="tab" onclick="renderUI('active')">已激活</a>
-                    <a class="tab" onclick="renderUI('expired')">已过期</a>
-                </div>
-                <div class="flex gap-2 w-full md:w-auto">
-                    <button class="btn btn-primary flex-1 md:flex-none" onclick="add_modal.showModal()">
-                        <i data-lucide="plus" class="w-4 h-4"></i> 添加订阅
-                    </button>
-                    <button class="btn btn-success text-white flex-1 md:flex-none" onclick="saveToGitHub()">
-                        <i data-lucide="cloud-upload" class="w-4 h-4"></i> 保存同步
-                    </button>
-                </div>
+            <!-- 操作区 -->
+            <div class="flex items-center justify-between">
+                <h2 class="text-lg font-bold">我的订阅列表</h2>
+                <button class="btn btn-primary btn-sm" onclick="add_modal.showModal()">
+                    <i data-lucide="plus" class="w-4 h-4"></i> 添加
+                </button>
             </div>
 
-            <!-- 第三部分：我的订阅列表 (List) -->
-            <div id="subscription-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                <!-- 这里由 JS 生成 Card -->
-                <div class="col-span-full py-20 text-center opacity-50 flex flex-col items-center gap-4">
-                    <i data-lucide="package-search" class="w-16 h-16"></i>
-                    <p>你的订阅列表空空的，快去添加一个吧！</p>
-                </div>
+            <!-- 列表区 -->
+            <div id="subscription-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 pb-20">
+                <!-- 由渲染函数填充 -->
             </div>
         </main>
     </div>
 
-    <!-- 侧边设置栏 (Sidebar) -->
+    <!-- 侧边栏：配置页 -->
     <div class="drawer-side z-50">
-        <label for="settings-drawer" aria-label="close sidebar" class="drawer-overlay"></label>
-        <div class="menu p-6 w-80 min-h-full bg-base-100 text-base-content">
-            <h2 class="text-xl font-bold mb-6 flex items-center gap-2">
-                <i data-lucide="database"></i> 数据同步设置
-            </h2>
+        <label for="settings-drawer" class="drawer-overlay"></label>
+        <div class="menu p-6 w-85 min-h-full bg-base-100 text-base-content border-l border-gray-200">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-xl font-bold flex items-center gap-2">
+                    <i data-lucide="settings-2"></i> 同步设置
+                </h2>
+                <label for="settings-drawer" class="btn btn-sm btn-circle btn-ghost">✕</label>
+            </div>
+            
             <div class="space-y-4">
-                <div class="form-control w-full">
-                    <label class="label"><span class="label-text font-semibold">GitHub Token</span></label>
-                    <input type="password" id="gh-token" placeholder="ghp_xxxx" class="input input-bordered w-full" />
+                <div class="form-control">
+                    <label class="label"><span class="label-text font-bold text-xs uppercase">GitHub Token</span></label>
+                    <input type="password" id="gh-token" placeholder="ghp_xxxxxxxx" class="input input-sm input-bordered w-full" />
                 </div>
-                <div class="form-control w-full">
-                    <label class="label"><span class="label-text font-semibold">仓库名</span></label>
-                    <input type="text" id="gh-repo" placeholder="用户名/仓库名" class="input input-bordered w-full" />
+                <div class="form-control">
+                    <label class="label"><span class="label-text font-bold text-xs uppercase">仓库 (Username/Repo)</span></label>
+                    <input type="text" id="gh-repo" placeholder="octocat/my-subs" class="input input-sm input-bordered w-full" />
                 </div>
-                <div class="form-control w-full">
-                    <label class="label"><span class="label-text font-semibold">Master Key (加密密钥)</span></label>
-                    <input type="password" id="master-key" placeholder="你的密钥" class="input input-bordered w-full" />
+                <div class="form-control">
+                    <label class="label"><span class="label-text font-bold text-xs uppercase">加密密码 (Master Key)</span></label>
+                    <input type="password" id="master-key" placeholder="用于 AES 加密的密码" class="input input-sm input-bordered w-full" />
                 </div>
-                <div class="mt-8 p-4 bg-gray-50 rounded-lg text-xs text-gray-500 border border-gray-100">
-                    <p>提示：这些信息仅保存在你当前浏览器的 LocalStorage 中，不会上传。点击右上角同步按钮即可以加密方式保存到 GitHub。</p>
+                
+                <div class="py-4">
+                    <button class="btn btn-primary btn-block" onclick="saveConfig()">
+                        <i data-lucide="save" class="w-4 h-4"></i> 保存并初始化数据
+                    </button>
+                </div>
+
+                <div class="alert alert-info text-[11px] leading-relaxed py-2 shadow-none border-none bg-blue-50 text-blue-800">
+                    <i data-lucide="info" class="w-4 h-4 mt-1"></i>
+                    <div>
+                        信息保存在本地 LocalStorage。更改后点击保存将重新尝试从 GitHub 抓取最新数据。
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 </div>
 
-<!-- 添加订阅对话框 (Modal) -->
-<dialog id="add_modal" class="modal modal-bottom sm:modal-middle">
+<!-- Modal 保持不变 -->
+<dialog id="add_modal" class="modal">
     <div class="modal-box">
-        <h3 class="font-bold text-lg mb-4">添加订阅项目</h3>
+        <h3 class="font-bold text-lg mb-4">新订阅</h3>
         <div class="space-y-4">
-            <input type="text" id="sub-name" placeholder="服务名称 (如: Netflix, iCloud)" class="input input-bordered w-full" />
+            <input type="text" id="sub-name" placeholder="名称 (如 Netflix)" class="input input-bordered w-full" />
             <div class="flex gap-2">
                 <input type="number" id="sub-price" placeholder="价格" class="input input-bordered flex-grow" />
                 <select id="sub-currency" class="select select-bordered w-24">
@@ -149,10 +132,7 @@
                     <option>HKD</option>
                 </select>
             </div>
-            <div class="form-control">
-                <label class="label"><span class="label-text text-xs">下个扣费日期</span></label>
-                <input type="date" id="sub-date" class="input input-bordered w-full" />
-            </div>
+            <input type="date" id="sub-date" class="input input-bordered w-full" />
             <select id="sub-period" class="select select-bordered w-full">
                 <option value="month">每月付款 (Monthly)</option>
                 <option value="year">每年付款 (Yearly)</option>
@@ -160,92 +140,140 @@
         </div>
         <div class="modal-action">
             <button class="btn btn-ghost" onclick="add_modal.close()">取消</button>
-            <button class="btn btn-primary px-8" onclick="addSubscription()">添加</button>
+            <button class="btn btn-primary" onclick="addSubscription()">添加并云同步</button>
         </div>
     </div>
 </dialog>
 
 <script>
     let subscriptions = [];
+    const statusEl = document.getElementById('sync-status');
 
-    // 初始化图标
     lucide.createIcons();
 
-    // 辅助函数：根据名称获取 Logo 地址 (利用 Clearbit API)
-    function getLogoUrl(name) {
-        const domain = name.toLowerCase().replace(/\s+/g, '') + '.com';
-        return `https://logo.clearbit.com/${domain}?size=80&fallback=https://ui-avatars.com/api/?name=${encodeURIComponent(name)}`;
-    }
-
-    // 根据数据生成订阅卡片
-    function renderUI(filter = 'all') {
+    // 核心 1：更新 UI 汇总卡片和列表
+    function updateUI() {
         const container = document.getElementById('subscription-list');
         container.innerHTML = '';
-
-        let total = 0;
-        let upcoming = 0;
+        let total = 0, upcoming = 0;
         const now = new Date();
 
-        const filteredList = subscriptions.filter(item => {
-            if (filter === 'active') return new Date(item.date) > now;
-            if (filter === 'expired') return new Date(item.date) <= now;
-            return true;
-        });
-
-        filteredList.sort((a, b) => new Date(a.date) - new Date(b.date));
-
-        filteredList.forEach((sub, index) => {
+        subscriptions.forEach((sub, index) => {
             const billDate = new Date(sub.date);
             const diffDays = Math.ceil((billDate - now) / (1000 * 60 * 60 * 24));
             const isExpired = diffDays < 0;
-            
-            // 简单计算月均支出
-            const monthlyPrice = sub.period === 'year' ? sub.price / 12 : sub.price;
-            total += parseFloat(monthlyPrice);
+            if (sub.period === 'year') total += sub.price / 12; else total += parseFloat(sub.price);
             if (diffDays >= 0 && diffDays <= 30) upcoming++;
 
             const card = document.createElement('div');
-            card.className = "card bg-white shadow-sm hover:shadow-md transition-shadow border border-gray-100 overflow-hidden";
+            card.className = "card bg-white shadow-sm border border-gray-100 p-4 transition-all hover:shadow-md";
             card.innerHTML = `
-                <div class="p-5 flex gap-4">
-                    <div class="avatar">
-                        <div class="w-12 h-12 rounded-xl bg-gray-100 border border-gray-50 overflow-hidden">
-                            <img src="${getLogoUrl(sub.name)}" onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(sub.name)}'"/>
-                        </div>
-                    </div>
+                <div class="flex items-center gap-3">
+                    <img src="https://logo.clearbit.com/${sub.name.toLowerCase().replace(/\s/g,'')}.com?size=64&fallback=https://ui-avatars.com/api/?name=${sub.name}" class="w-10 h-10 rounded-lg">
                     <div class="flex-grow">
-                        <div class="flex justify-between items-start">
-                            <h3 class="font-bold text-gray-800">${sub.name}</h3>
-                            <span class="text-xs font-semibold ${isExpired ? 'text-error' : 'text-primary'}">
-                                ${sub.currency} ${sub.price}
-                            </span>
-                        </div>
-                        <p class="text-xs text-gray-500 mt-1 flex items-center gap-1">
-                            <i data-lucide="clock" class="w-3 h-3"></i> 
-                            ${isExpired ? '已到期' : '续费还有 ' + diffDays + ' 天'}
-                        </p>
+                        <div class="flex justify-between"><h4 class="font-bold text-sm">${sub.name}</h4><span class="text-xs font-bold text-primary">${sub.currency} ${sub.price}</span></div>
+                        <div class="text-[10px] text-gray-500">${isExpired ? '已过期' : diffDays + ' 天后扣费'}</div>
                     </div>
-                </div>
-                <div class="h-1 w-full bg-gray-50">
-                    <div class="${isExpired ? 'bg-error' : (diffDays < 7 ? 'bg-warning' : 'bg-primary')} h-full" style="width: ${Math.max(0, Math.min(100, (30-diffDays)/30*100))}%"></div>
-                </div>
-                <div class="bg-gray-50/50 px-5 py-3 flex justify-between items-center">
-                    <span class="text-[10px] uppercase font-bold tracking-wider text-gray-400">${sub.period === 'month' ? '月付' : '年付'}</span>
-                    <button class="btn btn-ghost btn-xs text-error" onclick="deleteSubscription(${index})">删除</button>
+                    <button class="btn btn-ghost btn-xs text-error" onclick="deleteSubscription(${index})"><i data-lucide="trash-2" class="w-3 h-3"></i></button>
                 </div>
             `;
             container.appendChild(card);
         });
 
-        // 更新仪表盘数值
         document.getElementById('total-monthly').innerText = `¥ ${total.toFixed(2)}`;
         document.getElementById('upcoming-count').innerText = upcoming;
         document.getElementById('active-count').innerText = subscriptions.length;
         lucide.createIcons();
     }
 
-    // --- 业务逻辑：添加、同步、解密 ---
+    // 核心 2：侧边栏保存按钮交互
+    function saveConfig() {
+        const token = document.getElementById('gh-token').value;
+        const repo = document.getElementById('gh-repo').value;
+        const key = document.getElementById('master-key').value;
 
+        if(!token || !repo || !key) return alert('请完整填写');
+
+        localStorage.setItem('gh_token', token);
+        localStorage.setItem('gh_repo', repo);
+        localStorage.setItem('master_key', key);
+        
+        // 自动关闭并拉取一次数据
+        document.getElementById('settings-drawer').checked = false;
+        fetchDataFromServer();
+    }
+
+    // 核心 3：静默获取数据
+    async function fetchDataFromServer() {
+        const token = localStorage.getItem('gh_token');
+        const repo = localStorage.getItem('gh_repo');
+        const key = localStorage.getItem('master_key');
+
+        if (!token || !repo || !key) {
+            statusEl.innerHTML = '<i data-lucide="alert-circle" class="w-3 h-3"></i> 未配置';
+            statusEl.className = "badge badge-warning badge-sm gap-1 ml-2";
+            lucide.createIcons();
+            return;
+        }
+
+        statusEl.innerHTML = '<span class="loading loading-spinner loading-xs"></span> 同步中...';
+        
+        try {
+            const apiPath = `https://api.github.com/repos/${repo}/contents/data/subscriptions.json.enc`;
+            const res = await fetch(apiPath, { headers: { Authorization: `token ${token}` } });
+            
+            if (res.status === 404) {
+                statusEl.innerHTML = '<i data-lucide="check" class="w-3 h-3"></i> 云端全新';
+            } else {
+                const fileData = await res.json();
+                const encrypted = atob(fileData.content);
+                const bytes = CryptoJS.AES.decrypt(encrypted, key);
+                subscriptions = JSON.parse(bytes.toString(CryptoJS.enc.Utf8));
+                statusEl.innerHTML = '<i data-lucide="cloud-check" class="w-3 h-3"></i> 已就绪';
+            }
+        } catch (e) {
+            statusEl.innerHTML = '<i data-lucide="alert-triangle" class="w-3 h-3"></i> 密钥错';
+            statusEl.className = "badge badge-error badge-sm gap-1 ml-2";
+        }
+        updateUI();
+        lucide.createIcons();
+    }
+
+    // 核心 4：自动保存（Add/Delete 之后触发）
+    async function autoSyncToServer() {
+        const token = localStorage.getItem('gh_token');
+        const repo = localStorage.getItem('gh_repo');
+        const key = localStorage.getItem('master_key');
+
+        if (!token) return;
+
+        statusEl.innerHTML = '<span class="loading loading-spinner loading-xs"></span> 云端保存中...';
+
+        const dataStr = JSON.stringify(subscriptions);
+        const encrypted = CryptoJS.AES.encrypt(dataStr, key).toString();
+        const apiPath = `https://api.github.com/repos/${repo}/contents/data/subscriptions.json.enc`;
+
+        try {
+            const getRes = await fetch(apiPath, { headers: { Authorization: `token ${token}` } });
+            let sha = (getRes.status === 200) ? (await getRes.json()).sha : null;
+
+            await fetch(apiPath, {
+                method: 'PUT',
+                headers: { Authorization: `token ${token}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    message: `Auto-sync ${new Date().getTime()}`,
+                    content: btoa(encrypted),
+                    sha: sha
+                })
+            });
+            statusEl.innerHTML = '<i data-lucide="cloud-check" class="w-3 h-3"></i> 已同步';
+        } catch (e) {
+            statusEl.innerHTML = '<i data-lucide="alert-triangle" class="w-3 h-3"></i> 同步失败';
+        }
+        lucide.createIcons();
+    }
+
+    // 交互逻辑：添加
     function addSubscription() {
         const sub = {
             name: document.getElementById('sub-name').value,
@@ -254,88 +282,34 @@
             date: document.getElementById('sub-date').value,
             period: document.getElementById('sub-period').value
         };
-        if (!sub.name || !sub.price || !sub.date) return alert('请填全信息');
+        if (!sub.name || !sub.price || !sub.date) return;
+        
         subscriptions.push(sub);
-        renderUI();
+        updateUI();
         add_modal.close();
+        autoSyncToServer(); // 自动触发
     }
 
+    // 交互逻辑：删除
     function deleteSubscription(index) {
-        if(confirm('确定删除这个订阅吗？')) {
+        if(confirm('确定删除吗？')) {
             subscriptions.splice(index, 1);
-            renderUI();
+            updateUI();
+            autoSyncToServer(); // 自动触发
         }
     }
 
-    // 初始化时从本地读取配置
-    window.onload = () => {
+    // 核心 5：页面加载自动触发
+    document.addEventListener('DOMContentLoaded', () => {
+        // 读取 LocalStorage 到表单
         document.getElementById('gh-token').value = localStorage.getItem('gh_token') || '';
         document.getElementById('gh-repo').value = localStorage.getItem('gh_repo') || '';
         document.getElementById('master-key').value = localStorage.getItem('master_key') || '';
-    };
+        
+        // 自动拉取
+        fetchDataFromServer();
+    });
 
-    // GitHub 同步逻辑 (保持与之前一致，但增加了交互反馈)
-    async function saveToGitHub() {
-        const token = document.getElementById('gh-token').value;
-        const repo = document.getElementById('gh-repo').value;
-        const key = document.getElementById('master-key').value;
-
-        if (!token || !repo || !key) return alert('请先在侧边栏填写同步信息');
-
-        localStorage.setItem('gh_token', token);
-        localStorage.setItem('gh_repo', repo);
-        localStorage.setItem('master_key', key);
-
-        const dataStr = JSON.stringify(subscriptions);
-        const encrypted = CryptoJS.AES.encrypt(dataStr, key).toString();
-        const apiPath = `https://api.github.com/repos/${repo}/contents/data/subscriptions.json.enc`;
-
-        try {
-            const getRes = await fetch(apiPath, { headers: { Authorization: `token ${token}` } });
-            let sha;
-            if (getRes.status === 200) {
-                const fileData = await getRes.json();
-                sha = fileData.sha;
-            }
-
-            const putRes = await fetch(apiPath, {
-                method: 'PUT',
-                headers: { Authorization: `token ${token}`, 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    message: `Sync Data ${new Date().toLocaleString()}`,
-                    content: btoa(encrypted),
-                    sha: sha
-                })
-            });
-
-            if (putRes.ok) alert('同步成功！数据已安全加密存储。');
-            else throw new Error('上传失败');
-        } catch (e) {
-            alert('保存出错：' + e.message);
-        }
-    }
-
-    async function fetchLatestData() {
-        // ... (此处保持之前的获取并解密逻辑，内容同前，但调用 renderUI() 刷新界面)
-        const token = document.getElementById('gh-token').value;
-        const repo = document.getElementById('gh-repo').value;
-        const key = document.getElementById('master-key').value;
-        const apiPath = `https://api.github.com/repos/${repo}/contents/data/subscriptions.json.enc`;
-
-        try {
-            const res = await fetch(apiPath, { headers: { Authorization: `token ${token}` } });
-            if (!res.ok) throw new Error('找不到云端数据');
-            const fileData = await res.json();
-            const encrypted = atob(fileData.content);
-            const bytes = CryptoJS.AES.decrypt(encrypted, key);
-            const decryptedData = JSON.parse(bytes.toString(CryptoJS.enc.Utf8));
-            subscriptions = decryptedData;
-            renderUI();
-            alert('数据已同步至最新。');
-        } catch (e) {
-            alert('获取失败，可能是首次使用或密钥错误: ' + e.message);
-        }
-    }
 </script>
 </body>
 </html>

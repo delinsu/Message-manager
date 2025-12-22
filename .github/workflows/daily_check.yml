@@ -2,25 +2,29 @@ name: Daily Subscription Check
 
 on:
   schedule:
-    - cron: '0 1 * * *' # 每天北京时间上午9点左右运行
-  workflow_dispatch:      # 允许手动触发测试
+    - cron: '30 0 * * *' # 北京时间早上 08:30 运行
+  workflow_dispatch:
 
 jobs:
   check:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
-      
-      - name: Set up Python
-        uses: actions/setup-python@v4
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
         with:
-          python-version: '3.9'
-          
-      - name: Install dependencies
-        run: pip install -r scripts/requirements.txt
-        
-      - name: Run check
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install Dependencies
+        # 即使没有 package.json 也可以直接安装
+        run: npm install crypto-js
+
+      - name: Run Daily Check
         env:
+          # 关键映射
           MASTER_KEY: ${{ secrets.MASTER_KEY }}
-          BARK_URL: ${{ secrets.BARK_URL }}
-        run: python scripts/check_expiry.py
+          BARK_KEY: ${{ secrets.BARK_KEY }}
+        run: node daily_check.js
