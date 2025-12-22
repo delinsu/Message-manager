@@ -16,9 +16,10 @@ jobs:
         uses: actions/setup-node@v3
         with:
           node-version: '18'
-          cache: 'npm'
+          # 删除了 cache: 'npm' 这一行，避免报错
 
       - name: Install Dependencies
+        # 即使没有 package.json，此命令也会直接安装我们需要的库
         run: npm install crypto-js
 
       - name: Run Daily Check
