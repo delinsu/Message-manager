@@ -6,23 +6,11 @@ const https = require("https");
 const MASTER_KEY = process.env.MASTER_KEY;
 const BARK_KEY = process.env.BARK_KEY;
 const BARK_SERVER = "https://bark-server-2z8w.onrender.com/bark";
-// const BARK_SERVER = process.env.BARK_SERVER;
 const FILE_PATH = "./data/subscriptions.json.enc";
 
 if (!MASTER_KEY || !BARK_KEY) {
     console.error("❌ 错误: 环境变量 MASTER_KEY 或 BARK_KEY 未配置");
-if (!MASTER_KEY) {
-    console.error("❌ 错误: 环境变量 MASTER_KEY 未配置");
-    process.exit(1);
-}
-if (!MASTER_KEY) {
-    console.error("❌ 错误: 环境变量 BARK_KEY 未配置");
-    process.exit(1);
-}
-if (!BARK_SERVER) {
-    console.error("❌ 错误: 环境变量 BARK_SERVER 未配置");
-    process.exit(1);
-}
+
 
 try {
     if (!fs.existsSync(FILE_PATH)) {
@@ -85,7 +73,6 @@ function checkAndNotify(subs) {
 function sendBarkNotification(sub, timeDesc) {
     const title = encodeURIComponent(`续费提醒: ${sub.name}`);
     const content = encodeURIComponent(`${sub.name} 将于 ${timeDesc} 扣费：${sub.currency} ${sub.price}`);
-    // const url = `${BARK_SERVER}/${BARK_KEY}/${title}/${content}?group=SubTrack&icon=https://logo.clearbit.com/${sub.name.toLowerCase().replace(/\s/g,'')}.com`;
-    const url = `${BARK_SERVER}/${BARK_KEY}/${title}/${content}`;
+    const url = `${BARK_SERVER}/${BARK_KEY}/${title}/${content}?group=SubTrack&icon=https://logo.clearbit.com/${sub.name.toLowerCase().replace(/\s/g,'')}.com`;
     https.get(url).on('error', (e) => console.error(`推送失败: ${e.message}`));
 }

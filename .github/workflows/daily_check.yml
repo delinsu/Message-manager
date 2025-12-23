@@ -25,7 +25,6 @@ jobs:
       - name: Run Daily Check
         env:
           MASTER_KEY: ${{ secrets.MASTER_KEY }}
-          BARK_SERVER: ${{ secrets.BARK_SERVER }}
           BARK_KEY: ${{ secrets.BARK_KEY }}
         run: node daily_check.js
 
