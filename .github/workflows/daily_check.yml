@@ -27,6 +27,3 @@ jobs:
           MASTER_KEY: ${{ secrets.MASTER_KEY }}
           BARK_KEY: ${{ secrets.BARK_KEY }}
         run: node daily_check.js
-
-permissions:
-  contents: read # 只需读取 data 文件
