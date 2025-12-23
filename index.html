@@ -3,288 +3,286 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SubTrack Pro | 订阅管理</title>
-    <!-- Tailwind CSS & Google Fonts -->
+    <title>SubTrack Dashboard</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
-        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; }
-        .glass-card { background: rgba(255, 255, 255, 0.8); backdrop-filter: blur(10px); }
-        .sub-card:hover { transform: translateY(-2px); transition: all 0.2s; }
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #f8fafc; color: #0f172a; }
+        .sidebar-active { background: rgba(99, 102, 241, 0.1); color: #4f46e5; border-right: 3px solid #4f46e5; }
+        .glass-card { background: white; border: 1px solid #f1f5f9; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05); transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        .glass-card:hover { shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1); transform: translateY(-2px); }
+        input:focus { border-color: #6366f1; ring: 2px ring-indigo-100; }
     </style>
 </head>
-<body class="text-slate-900 min-h-screen">
+<body class="min-h-screen flex">
 
-<div class="max-w-2xl mx-auto px-6 py-8">
-    <!-- Header -->
-    <header class="flex justify-between items-center mb-8">
-        <div>
-            <h1 class="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-violet-600">
-                SubTrack Pro
-            </h1>
-            <p class="text-slate-500 text-sm mt-1">你的订阅开支管家</p>
+    <!-- Desktop Sidebar -->
+    <aside class="hidden lg:flex w-64 bg-white border-r border-slate-200 flex-col sticky top-0 h-screen">
+        <div class="p-8">
+            <h1 class="text-2xl font-800 font-black tracking-tighter text-indigo-600">SubTrack.</h1>
         </div>
-        <button onclick="toggleSettings()" class="p-2 hover:bg-white rounded-full transition shadow-sm border border-slate-200">
-            <i data-lucide="settings" class="w-6 h-6 text-slate-600"></i>
-        </button>
-    </header>
-
-    <!-- Stats Dashboard -->
-    <div class="grid grid-cols-2 gap-4 mb-8">
-        <div class="glass-card p-6 rounded-3xl border border-white shadow-sm">
-            <p class="text-slate-500 text-xs font-bold uppercase tracking-wider mb-1">月度支出 (预估)</p>
-            <div class="flex items-baseline gap-1">
-                <span class="text-2xl font-bold text-indigo-600">¥</span>
-                <span id="monthly-total" class="text-3xl font-black">0.00</span>
+        <nav class="flex-1 px-4 space-y-2 text-sm font-semibold">
+            <a href="#" class="flex items-center gap-3 px-4 py-3 rounded-xl sidebar-active">
+                <i data-lucide="layout-dashboard" class="w-5 h-5"></i> 控制面板
+            </a>
+            <a href="#" onclick="toggleSettings()" class="flex items-center gap-3 px-4 py-3 rounded-xl text-slate-500 hover:bg-slate-50 transition">
+                <i data-lucide="settings" class="w-5 h-5"></i> 同步设置
+            </a>
+        </nav>
+        <div class="p-6">
+            <div class="bg-indigo-600 rounded-2xl p-4 text-white">
+                <p class="text-[10px] font-bold opacity-80 uppercase tracking-widest">高级版计划</p>
+                <p class="text-sm font-bold mt-1">云端加密已开启</p>
             </div>
         </div>
-        <div class="glass-card p-6 rounded-3xl border border-white shadow-sm">
-            <p class="text-slate-500 text-xs font-bold uppercase tracking-wider mb-1">订阅总数</p>
-            <div class="flex items-baseline gap-1">
-                <span id="sub-count" class="text-3xl font-black text-slate-800">0</span>
-                <span class="text-slate-400 font-medium">个项目</span>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="flex-1 flex flex-col min-w-0">
+        <!-- Top Navigation -->
+        <header class="h-16 bg-white/80 backdrop-blur-md border-b border-slate-200 sticky top-0 z-30 px-8 flex items-center justify-between">
+            <div class="lg:hidden font-bold text-indigo-600">SubTrack.</div>
+            <div class="text-sm font-medium text-slate-500 hidden md:block">欢迎回来，这是您的订阅概览</div>
+            <div class="flex items-center gap-4">
+                <button onclick="toggleSettings()" class="p-2 hover:bg-slate-100 rounded-full text-slate-500 transition lg:hidden">
+                    <i data-lucide="settings" class="w-5 h-5"></i>
+                </button>
+                <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 shadow-inner"></div>
             </div>
-        </div>
-    </div>
+        </header>
 
-    <!-- Main List -->
-    <div id="sub-list" class="space-y-4 mb-10">
-        <!-- 动态注入列表 -->
-    </div>
+        <section class="p-6 md:p-10 max-w-7xl mx-auto w-full space-y-10">
+            <!-- Stats Grid -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div class="glass-card p-6 rounded-3xl">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="p-2 bg-indigo-50 text-indigo-600 rounded-lg"><i data-lucide="credit-card" class="w-5 h-5"></i></div>
+                        <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">月支出</span>
+                    </div>
+                    <div class="flex items-baseline gap-1">
+                        <span class="text-xl font-bold text-slate-400">¥</span>
+                        <span id="stat-monthly" class="text-3xl font-bold tracking-tight">0.00</span>
+                    </div>
+                </div>
+                <div class="glass-card p-6 rounded-3xl">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="p-2 bg-emerald-50 text-emerald-600 rounded-lg"><i data-lucide="calendar" class="w-5 h-5"></i></div>
+                        <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">年支出</span>
+                    </div>
+                    <div class="flex items-baseline gap-1">
+                        <span class="text-xl font-bold text-slate-400">¥</span>
+                        <span id="stat-yearly" class="text-3xl font-bold tracking-tight">0.00</span>
+                    </div>
+                </div>
+                <div class="glass-card p-6 rounded-3xl bg-slate-900 border-none">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="p-2 bg-white/10 text-white rounded-lg"><i data-lucide="layers" class="w-5 h-5"></i></div>
+                        <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider text-white/50">活跃项目数</span>
+                    </div>
+                    <div id="stat-count" class="text-3xl font-bold tracking-tight text-white">0</div>
+                </div>
+            </div>
 
-    <!-- Bottom Add Form (Sticky on Mobile) -->
-    <div class="fixed bottom-6 left-0 right-0 px-6 max-w-2xl mx-auto">
-        <div class="bg-slate-900/90 backdrop-blur-md text-white p-2 rounded-2xl shadow-2xl border border-slate-700">
-            <div class="grid grid-cols-6 gap-2">
-                <input id="name" type="text" placeholder="服务名" class="col-span-2 bg-transparent p-3 text-sm focus:outline-none placeholder:text-slate-500">
-                <input id="price" type="number" placeholder="金额" class="bg-transparent p-3 text-sm focus:outline-none placeholder:text-slate-500 border-l border-slate-700">
-                <select id="period" class="bg-transparent text-sm focus:outline-none cursor-pointer border-l border-slate-700">
-                    <option value="month">/月</option>
-                    <option value="year">/年</option>
-                </select>
-                <div class="col-span-2 flex items-center pr-2">
-                    <input id="date" type="date" class="hidden" onchange="addSubscription()">
-                    <button onclick="document.getElementById('date').showPicker()" class="w-full bg-indigo-500 hover:bg-indigo-600 py-2 rounded-xl flex justify-center items-center transition">
-                        <i data-lucide="plus" class="w-5 h-5"></i>
+            <!-- Management Section -->
+            <div class="grid grid-cols-1 xl:grid-cols-3 gap-10 items-start">
+                <!-- List (Left) -->
+                <div class="xl:col-span-2 space-y-6">
+                    <div class="flex items-center justify-between">
+                        <h2 class="text-xl font-bold">订阅明细</h2>
+                        <div class="flex items-center gap-2">
+                            <span class="w-2 h-2 rounded-full bg-indigo-500 animate-pulse"></span>
+                            <span class="text-xs font-semibold text-slate-500 uppercase tracking-tighter">实时更新</span>
+                        </div>
+                    </div>
+                    
+                    <div id="sub-list" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <!-- Items dynamically injected -->
+                    </div>
+                </div>
+
+                <!-- Simple Add Form (Right) -->
+                <div class="bg-white border border-slate-200 rounded-[2rem] p-8 sticky top-24">
+                    <h2 class="text-lg font-bold mb-6 flex items-center gap-2">
+                        <i data-lucide="plus-circle" class="w-5 h-5 text-indigo-600"></i> 新增订阅
+                    </h2>
+                    <div class="space-y-4">
+                        <div class="space-y-1">
+                            <label class="text-xs font-bold text-slate-400 uppercase ml-1 tracking-wider">名称</label>
+                            <input id="in-name" type="text" placeholder="如 Netflix" class="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-3 text-sm focus:bg-white transition-all outline-none">
+                        </div>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div class="space-y-1">
+                                <label class="text-xs font-bold text-slate-400 uppercase ml-1 tracking-wider">价格</label>
+                                <input id="in-price" type="number" placeholder="0.00" class="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-3 text-sm focus:bg-white outline-none">
+                            </div>
+                            <div class="space-y-1">
+                                <label class="text-xs font-bold text-slate-400 uppercase ml-1 tracking-wider">周期</label>
+                                <select id="in-period" class="w-full bg-slate-50 border border-slate-100 rounded-2xl px-4 py-3 text-sm focus:bg-white outline-none">
+                                    <option value="month">/ 每月</option>
+                                    <option value="year">/ 每年</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="space-y-1">
+                            <label class="text-xs font-bold text-slate-400 uppercase ml-1 tracking-wider">下次续费日期</label>
+                            <input id="in-date" type="date" class="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-3 text-sm focus:bg-white outline-none uppercase font-semibold">
+                        </div>
+                        <button onclick="addSubscription()" class="w-full bg-indigo-600 text-white font-bold py-4 rounded-2xl shadow-lg shadow-indigo-100 hover:bg-indigo-700 active:scale-[0.98] transition-all flex items-center justify-center gap-2 mt-4">
+                            <i data-lucide="arrow-up-right" class="w-5 h-5"></i> 确认添加
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Settings Backdrop Layer -->
+    <div id="settings-overlay" class="fixed inset-0 bg-slate-900/20 backdrop-blur-sm z-50 hidden transition-opacity duration-300">
+        <div class="absolute right-0 top-0 bottom-0 w-full max-w-md bg-white shadow-2xl p-10 flex flex-col">
+            <div class="flex justify-between items-center mb-10">
+                <h2 class="text-2xl font-bold">同步设置</h2>
+                <button onclick="toggleSettings()" class="text-slate-400 hover:text-black transition"><i data-lucide="x" class="w-6 h-6"></i></button>
+            </div>
+            
+            <div class="space-y-8 flex-1 overflow-y-auto">
+                <div class="p-6 bg-slate-50 rounded-3xl border border-slate-100 space-y-4">
+                    <div>
+                        <label class="text-[10px] font-black tracking-widest text-slate-400 uppercase">GitHub Token</label>
+                        <input id="gh-token" type="password" class="w-full bg-transparent border-b border-slate-200 py-2 text-sm focus:border-indigo-500 outline-none transition-colors">
+                    </div>
+                    <div>
+                        <label class="text-[10px] font-black tracking-widest text-slate-400 uppercase">Repository (User/Repo)</label>
+                        <input id="gh-repo" type="text" class="w-full bg-transparent border-b border-slate-200 py-2 text-sm focus:border-indigo-500 outline-none transition-colors">
+                    </div>
+                    <div>
+                        <label class="text-[10px] font-black tracking-widest text-slate-400 uppercase">Master Encryption Key</label>
+                        <input id="master-key" type="password" class="w-full bg-transparent border-b border-slate-200 py-2 text-sm focus:border-indigo-500 outline-none transition-colors">
+                    </div>
+                </div>
+                
+                <div class="flex flex-col gap-3">
+                    <button onclick="saveToCloud()" id="btn-save" class="w-full py-4 bg-indigo-600 text-white font-bold rounded-2xl shadow-xl shadow-indigo-50 text-sm hover:bg-indigo-700 flex items-center justify-center gap-2">
+                        <i data-lucide="upload-cloud" class="w-5 h-5"></i> 加密保存到 GitHub
+                    </button>
+                    <button onclick="loadFromCloud()" class="w-full py-4 bg-slate-50 text-slate-600 font-bold rounded-2xl text-sm hover:bg-slate-100 transition flex items-center justify-center gap-2">
+                        <i data-lucide="download-cloud" class="w-5 h-5"></i> 从云端恢复数据
                     </button>
                 </div>
             </div>
-        </div>
-    </div>
-</div>
 
-<!-- Settings Panel (Side Sheet) -->
-<div id="settings-panel" class="fixed inset-y-0 right-0 w-80 bg-white/95 backdrop-blur-lg shadow-2xl p-8 transform translate-x-full transition-transform duration-300 ease-in-out border-l border-slate-200 z-50 overflow-y-auto">
-    <div class="flex justify-between items-center mb-8">
-        <h2 class="text-xl font-bold">同步设置</h2>
-        <button onclick="toggleSettings()"><i data-lucide="x" class="w-6 h-6 text-slate-400"></i></button>
-    </div>
-    
-    <div class="space-y-6">
-        <div>
-            <label class="block text-xs font-black text-slate-400 mb-2 uppercase tracking-widest">GitHub Token (PAT)</label>
-            <input id="gh-token" type="password" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="ghp_xxxx">
-        </div>
-        <div>
-            <label class="block text-xs font-black text-slate-400 mb-2 uppercase tracking-widest">仓库路径</label>
-            <input id="gh-repo" type="text" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none" placeholder="username/repo-name">
-        </div>
-        <div>
-            <label class="block text-xs font-black text-slate-400 mb-2 uppercase tracking-widest">主加密密钥 (Master Key)</label>
-            <input id="master-key" type="password" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none">
-        </div>
-
-        <div class="pt-6 border-t border-slate-100 space-y-3">
-            <button onclick="saveToGithub()" id="save-btn" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-4 rounded-2xl flex items-center justify-center gap-2 shadow-lg shadow-emerald-200 transition">
-                <i data-lucide="upload-cloud" class="w-5 h-5"></i> 加密并保存
-            </button>
-            <button onclick="loadFromGithub()" class="w-full bg-indigo-50 hover:bg-indigo-100 text-indigo-600 font-bold py-4 rounded-2xl flex items-center justify-center gap-2 transition">
-                <i data-lucide="download-cloud" class="w-5 h-5"></i> 从仓库拉取
-            </button>
+            <div class="mt-8 text-center">
+                <p class="text-[10px] text-slate-400 leading-relaxed uppercase tracking-widest">
+                    AES-256 加密 • 数据端对端同步
+                </p>
+            </div>
         </div>
     </div>
-
-    <div class="mt-12 p-4 bg-amber-50 rounded-2xl border border-amber-100">
-        <p class="text-xs text-amber-700 leading-relaxed italic">
-            💡 资深提醒：修改后请务必点击“加密并保存”，否则云端的脚本不会更新提醒列表。
-        </p>
-    </div>
-</div>
 
 <script>
     let subs = [];
-    const storageKeys = ['gh-token', 'gh-repo', 'master-key'];
+    const fields = ['gh-token', 'gh-repo', 'master-key'];
 
-    // 初始化页面
     window.onload = () => {
-        storageKeys.forEach(k => {
-            document.getElementById(k).value = localStorage.getItem(k) || '';
-        });
-        loadFromGithub();
+        fields.forEach(f => document.getElementById(f).value = localStorage.getItem(f) || '');
+        loadFromCloud();
         lucide.createIcons();
     };
 
     function toggleSettings() {
-        const panel = document.getElementById('settings-panel');
-        const isOpen = !panel.classList.contains('translate-x-full');
-        panel.classList.toggle('translate-x-full');
-        if (isOpen) {
-            storageKeys.forEach(k => localStorage.setItem(k, document.getElementById(k).value));
+        const overlay = document.getElementById('settings-overlay');
+        const isHidden = overlay.classList.contains('hidden');
+        if (isHidden) overlay.classList.remove('hidden');
+        else {
+            overlay.classList.add('hidden');
+            fields.forEach(f => localStorage.setItem(f, document.getElementById(f).value));
         }
-    }
-
-    function addSubscription() {
-        const nameInput = document.getElementById('name');
-        const priceInput = document.getElementById('price');
-        const dateInput = document.getElementById('date');
-        const periodInput = document.getElementById('period');
-
-        if (!nameInput.value || !priceInput.value || !dateInput.value) {
-            alert("请完整填写表单！");
-            return;
-        }
-
-        const sub = {
-            id: Date.now(),
-            name: nameInput.value,
-            price: parseFloat(priceInput.value),
-            currency: 'CNY',
-            date: dateInput.value,
-            period: periodInput.value
-        };
-
-        subs.push(sub);
-        render();
-        
-        // 重置表单
-        nameInput.value = '';
-        priceInput.value = '';
-    }
-
-    function deleteSub(id) {
-        if(confirm("确定要删除这项订阅吗？")) {
-            subs = subs.filter(s => s.id !== id);
-            render();
-        }
-    }
-
-    function updateStats() {
-        let monthly = 0;
-        subs.forEach(s => {
-            monthly += s.period === 'year' ? s.price / 12 : s.price;
-        });
-        document.getElementById('monthly-total').innerText = monthly.toFixed(2);
-        document.getElementById('sub-count').innerText = subs.length;
     }
 
     function render() {
         const list = document.getElementById('sub-list');
         if (subs.length === 0) {
-            list.innerHTML = `
-                <div class="text-center py-20">
-                    <div class="text-slate-300 mb-4 flex justify-center"><i data-lucide="box" class="w-12 h-12"></i></div>
-                    <p class="text-slate-400">目前还没有订阅项目，开始添加吧</p>
-                </div>`;
+            list.innerHTML = `<div class="col-span-full border-2 border-dashed border-slate-200 rounded-[2rem] p-20 text-center text-slate-400">还没有任何订阅项目</div>`;
         } else {
             list.innerHTML = subs.map(s => `
-                <div class="sub-card glass-card p-5 rounded-3xl flex justify-between items-center border border-white shadow-sm transition-all">
-                    <div class="flex items-center gap-4">
-                        <img src="https://logo.clearbit.com/${s.name.toLowerCase().replace(/\s/g,'')}.com?size=128" 
-                             onerror="this.src='https://ui-avatars.com/api/?name=${s.name}&background=6366f1&color=fff'" 
-                             class="w-12 h-12 rounded-2xl object-cover shadow-sm">
-                        <div>
-                            <div class="font-bold text-slate-800">${s.name}</div>
-                            <div class="text-xs font-medium text-slate-400 uppercase tracking-tighter">下次: ${s.date}</div>
+                <div class="glass-card p-5 rounded-3xl flex items-center justify-between group">
+                    <div class="flex items-center gap-4 min-w-0">
+                        <div class="w-14 h-14 rounded-2xl bg-slate-50 border border-slate-100 overflow-hidden flex-shrink-0">
+                            <img src="https://logo.clearbit.com/${s.name.toLowerCase().replace(/\s/g,'')}.com" 
+                                 onerror="this.src='https://ui-avatars.com/api/?name=${s.name}&background=f1f5f9&color=6366f1&bold=true'"
+                                 class="w-full h-full object-cover">
+                        </div>
+                        <div class="min-w-0">
+                            <h3 class="font-bold text-slate-800 truncate">${s.name}</h3>
+                            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mt-0.5">${s.date} • ${s.period === 'month' ? '月付' : '年付'}</p>
                         </div>
                     </div>
-                    <div class="flex items-center gap-5">
+                    <div class="flex items-center gap-6">
                         <div class="text-right">
-                            <div class="font-black text-indigo-600 leading-none">¥ ${s.price}</div>
-                            <div class="text-[10px] text-slate-400 font-bold uppercase">/ ${s.period === 'month' ? '月' : '年'}</div>
+                           <p class="text-lg font-bold tracking-tighter">¥${parseFloat(s.price).toFixed(2)}</p>
                         </div>
-                        <button onclick="deleteSub(${s.id})" class="text-slate-300 hover:text-red-400 transition">
-                            <i data-lucide="trash-2" class="w-5 h-5"></i>
+                        <button onclick="deleteSub(${s.id})" class="p-2 text-slate-300 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100">
+                           <i data-lucide="trash-2" class="w-5 h-5"></i>
                         </button>
                     </div>
                 </div>
             `).join('');
         }
-        updateStats();
+
+        const monthly = subs.reduce((acc, s) => acc + (s.period === 'year' ? s.price / 12 : s.price), 0);
+        document.getElementById('stat-monthly').innerText = monthly.toFixed(2);
+        document.getElementById('stat-yearly').innerText = (monthly * 12).toFixed(2);
+        document.getElementById('stat-count').innerText = subs.length;
         lucide.createIcons();
     }
 
-    // 后端同步逻辑 (Crypto + GitHub API) 保持不变，但增加 UI 反馈
-    async function loadFromGithub() {
-        const token = document.getElementById('gh-token').value;
-        const repo = document.getElementById('gh-repo').value;
-        const key = document.getElementById('master-key').value;
-        if (!token || !repo || !key) return;
-
-        try {
-            const res = await fetch(`https://api.github.com/repos/${repo}/contents/data/subscriptions.json.enc`, {
-                headers: { 'Authorization': `token ${token}` }
-            });
-            if (res.ok) {
-                const data = await res.json();
-                const encrypted = atob(data.content);
-                const bytes = CryptoJS.AES.decrypt(encrypted, key);
-                const decryptedText = bytes.toString(CryptoJS.enc.Utf8);
-                subs = JSON.parse(decryptedText);
-                render();
-            }
-        } catch (e) {
-            console.error("加载失败", e);
-        }
+    function addSubscription() {
+        const n = document.getElementById('in-name'), p = document.getElementById('in-price'), d = document.getElementById('in-date'), pr = document.getElementById('in-period');
+        if (!n.value || !p.value || !d.value) return alert("请确认信息完整");
+        subs.push({ id: Date.now(), name: n.value, price: parseFloat(p.value), date: d.value, period: pr.value });
+        n.value = ''; p.value = ''; render();
     }
 
-    async function saveToGithub() {
-        const btn = document.getElementById('save-btn');
-        const token = document.getElementById('gh-token').value;
-        const repo = document.getElementById('gh-repo').value;
-        const key = document.getElementById('master-key').value;
+    function deleteSub(id) {
+        if(confirm("确定删除该项目？")) { subs = subs.filter(s => s.id !== id); render(); }
+    }
 
-        if (!token || !repo || !key) return alert("配置信息不完整！");
-
-        btn.innerText = "加密并同步中...";
-        btn.disabled = true;
-
+    // 后端 GitHub 同步逻辑 (保持加密功能)
+    async function loadFromCloud() {
+        const token = document.getElementById('gh-token').value, repo = document.getElementById('gh-repo').value, key = document.getElementById('master-key').value;
+        if (!token || !repo || !key) return;
         try {
-            const jsonStr = JSON.stringify(subs);
-            const encrypted = CryptoJS.AES.encrypt(jsonStr, key).toString();
-            const base64Content = btoa(encrypted);
-
-            let sha = "";
-            const getFile = await fetch(`https://api.github.com/repos/${repo}/contents/data/subscriptions.json.enc`, {
-                headers: { 'Authorization': `token ${token}` }
-            });
-            if (getFile.ok) {
-                const fileData = await getFile.json();
-                sha = fileData.sha;
+            const res = await fetch(`https://api.github.com/repos/${repo}/contents/data/subscriptions.json.enc`, { headers: { 'Authorization': `token ${token}` } });
+            if (res.ok) {
+                const data = await res.json();
+                const decrypted = CryptoJS.AES.decrypt(atob(data.content), key).toString(CryptoJS.enc.Utf8);
+                subs = JSON.parse(decrypted);
+                render();
             }
+        } catch (e) { console.error("Cloud Error", e); }
+    }
 
+    async function saveToCloud() {
+        const token = document.getElementById('gh-token').value, repo = document.getElementById('gh-repo').value, key = document.getElementById('master-key').value;
+        const btn = document.getElementById('btn-save');
+        if (!token || !repo || !key) return alert("配置不完整");
+        btn.innerText = "数据上传中...";
+        try {
+            const encrypted = btoa(CryptoJS.AES.encrypt(JSON.stringify(subs), key).toString());
+            let sha = "";
+            const getFile = await fetch(`https://api.github.com/repos/${repo}/contents/data/subscriptions.json.enc`, { headers: { 'Authorization' : `token ${token}` } });
+            if (getFile.ok) sha = (await getFile.json()).sha;
             const res = await fetch(`https://api.github.com/repos/${repo}/contents/data/subscriptions.json.enc`, {
                 method: 'PUT',
                 headers: { 'Authorization': `token ${token}`, 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    message: "Update Subs (Pro UI)",
-                    content: base64Content,
-                    sha: sha
-                })
+                body: JSON.stringify({ message: "Sync Dashboard Data", content: encrypted, sha: sha })
             });
-
-            if (res.ok) alert("✅ 同步成功！");
-            else alert("❌ 同步失败，检查 Token 权限。");
-        } catch (e) {
-            alert("❌ 发生错误: " + e.message);
-        } finally {
-            btn.innerHTML = `<i data-lucide="upload-cloud" class="w-5 h-5"></i> 加密并保存`;
-            btn.disabled = false;
-            lucide.createIcons();
-        }
+            if (res.ok) alert("✅ 同步至 GitHub 成功");
+        } catch (e) { alert(e.message); }
+        btn.innerHTML = `<i data-lucide="upload-cloud" class="w-5 h-5"></i> 加密保存到 GitHub`;
+        lucide.createIcons();
     }
 </script>
-
 </body>
 </html>
