@@ -5,12 +5,24 @@ const https = require("https");
 // 配置
 const MASTER_KEY = process.env.MASTER_KEY;
 const BARK_KEY = process.env.BARK_KEY;
+// const BARK_SERVER = "https://bark-server-2z8w.onrender.com/bark";
 const BARK_SERVER = process.env.BARK_SERVER;
 const FILE_PATH = "./data/subscriptions.json.enc";
 
-if (!MASTER_KEY) { console.error("❌ 错误: MASTER_KEY 未配置"); process.exit(1); }
-if (!BARK_KEY) { console.error("❌ 错误: BARK_KEY 未配置"); process.exit(1); }
-if (!BARK_SERVER) { console.error("❌ 错误: BARK_SERVER 未配置"); process.exit(1); }
+if (!MASTER_KEY || !BARK_KEY) {
+    console.error("❌ 错误: 环境变量 MASTER_KEY 或 BARK_KEY 未配置");
+if (!MASTER_KEY) {
+    console.error("❌ 错误: 环境变量 MASTER_KEY 未配置");
+    process.exit(1);
+}
+if (!MASTER_KEY) {
+    console.error("❌ 错误: 环境变量 BARK_KEY 未配置");
+    process.exit(1);
+}
+if (!BARK_SERVER) {
+    console.error("❌ 错误: 环境变量 BARK_SERVER 未配置");
+    process.exit(1);
+}
 
 try {
     if (!fs.existsSync(FILE_PATH)) {
@@ -20,10 +32,10 @@ try {
 
     // --- 核心修正点：直接读取文件，不添加额外的 Base64 解码 ---
     const encryptedData = fs.readFileSync(FILE_PATH, "utf8").trim();
-    
+
     // 逻辑验证：CryptoJS 默认生成的加密串以 "U2FsdGVkX1" (Salted__) 开头
     console.log("🔐 正在解密文件...");
-    
+
     // 直接解密
     const bytes = CryptoJS.AES.decrypt(encryptedData, MASTER_KEY);
     const decryptedText = bytes.toString(CryptoJS.enc.Utf8);
@@ -36,7 +48,7 @@ try {
 
     const subscriptions = JSON.parse(decryptedText);
     console.log(`✅ 成功读取 ${subscriptions.length} 个项目`);
-    
+
     checkAndNotify(subscriptions);
 
 } catch (e) {
@@ -71,18 +83,9 @@ function checkAndNotify(subs) {
 }
 
 function sendBarkNotification(sub, timeDesc) {
-    const title = encodeURIComponent(`订阅续费提醒(${timeDesc})`);
+    const title = encodeURIComponent(`续费提醒: ${sub.name}`);
     const content = encodeURIComponent(`${sub.name} 将于 ${timeDesc} 扣费：${sub.currency} ${sub.price}`);
-    
-    // 2. 增强 URL 拼接健壮性：处理可能多出的斜杠
-    const baseUrl = BARK_SERVER.endsWith('/') ? BARK_SERVER.slice(0, -1) : BARK_SERVER;
-    
-    // 3. 找回图标和分组：这能显著提升手机端视觉识别度
-    const icon = `https://logo.clearbit.com/${sub.name.toLowerCase().replace(/\s/g,'')}.com?size=128&fallback=https://ui-avatars.com/api/?name=${sub.name}`;
-    const url = `${baseUrl}/${BARK_KEY}/${title}/${content}?group=SubTrack&icon=${icon}&sound=calypso`;
-    console.log(`🚀 正在推送: ${sub.name}...`);
-    https.get(url, (res) => {
-        if (res.statusCode === 200) console.log(`✅ ${sub.name} 通知成功`);
-        else console.error(`⚠️ ${sub.name} 通知失败，状态码: ${res.statusCode}`);
-    }).on('error', (e) => console.error(`❌ 推送请求异常: ${e.message}`));
+    // const url = `${BARK_SERVER}/${BARK_KEY}/${title}/${content}?group=SubTrack&icon=https://logo.clearbit.com/${sub.name.toLowerCase().replace(/\s/g,'')}.com`;
+    const url = `${BARK_SERVER}/${BARK_KEY}/${title}/${content}`;
+    https.get(url).on('error', (e) => console.error(`推送失败: ${e.message}`));
 }
