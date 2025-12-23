@@ -5,8 +5,8 @@ const https = require("https");
 // 配置
 const MASTER_KEY = process.env.MASTER_KEY;
 const BARK_KEY = process.env.BARK_KEY;
-// const BARK_SERVER = "https://bark-server-2z8w.onrender.com/bark";
-const BARK_SERVER = process.env.BARK_SERVER;
+const BARK_SERVER = "https://bark-server-2z8w.onrender.com/bark";
+// const BARK_SERVER = process.env.BARK_SERVER;
 const FILE_PATH = "./data/subscriptions.json.enc";
 
 if (!MASTER_KEY || !BARK_KEY) {
