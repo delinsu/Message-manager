@@ -28,3 +28,6 @@ jobs:
           BARK_SERVER: ${{ secrets.BARK_SERVER }}
           BARK_KEY: ${{ secrets.BARK_KEY }}
         run: node daily_check.js
+
+permissions:
+  contents: read # 只需读取 data 文件

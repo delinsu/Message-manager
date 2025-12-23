@@ -123,7 +123,7 @@
     <div class="modal-box">
         <h3 class="font-bold text-lg mb-4">新订阅</h3>
         <div class="space-y-4">
-            <input type="text" id="sub-name" placeholder="名称 (如 Netflix)" class="input input-bordered w-full" />
+            <input type="text" id="sub-name" placeholder="名称 (如 Gemini)" class="input input-bordered w-full" />
             <div class="flex gap-2">
                 <input type="number" id="sub-price" placeholder="价格" class="input input-bordered flex-grow" />
                 <select id="sub-currency" class="select select-bordered w-24">
@@ -166,10 +166,14 @@
             if (diffDays >= 0 && diffDays <= 30) upcoming++;
 
             const card = document.createElement('div');
+			const imgUrl = `https://logo.clearbit.com/${sub.name.toLowerCase().replace(/\s/g,'')}.com?size=64`;
+			const fallbackUrl = `https://ui-avatars.com/api/?name=${sub.name}&background=random`;
             card.className = "card bg-white shadow-sm border border-gray-100 p-4 transition-all hover:shadow-md";
             card.innerHTML = `
                 <div class="flex items-center gap-3">
-                    <img src="https://logo.clearbit.com/${sub.name.toLowerCase().replace(/\s/g,'')}.com?size=64&fallback=https://ui-avatars.com/api/?name=${sub.name}" class="w-10 h-10 rounded-lg">
+                    <img src="${imgUrl}" 
+						onerror="this.src='${fallbackUrl}'" 
+						class="w-10 h-10 rounded-lg object-cover bg-gray-100">
                     <div class="flex-grow">
                         <div class="flex justify-between"><h4 class="font-bold text-sm">${sub.name}</h4><span class="text-xs font-bold text-primary">${sub.currency} ${sub.price}</span></div>
                         <div class="text-[10px] text-gray-500">${isExpired ? '已过期' : diffDays + ' 天后扣费'}</div>

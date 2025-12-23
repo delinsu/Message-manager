@@ -8,18 +8,9 @@ const BARK_KEY = process.env.BARK_KEY;
 const BARK_SERVER = process.env.BARK_SERVER;
 const FILE_PATH = "./data/subscriptions.json.enc";
 
-if (!MASTER_KEY) {
-    console.error("❌ 错误: 环境变量 MASTER_KEY 未配置");
-    process.exit(1);
-}
-if (!MASTER_KEY) {
-    console.error("❌ 错误: 环境变量 BARK_KEY 未配置");
-    process.exit(1);
-}
-if (!BARK_SERVER) {
-    console.error("❌ 错误: 环境变量 BARK_SERVER 未配置");
-    process.exit(1);
-}
+if (!MASTER_KEY) { console.error("❌ 错误: MASTER_KEY 未配置"); process.exit(1); }
+if (!BARK_KEY) { console.error("❌ 错误: BARK_KEY 未配置"); process.exit(1); }
+if (!BARK_SERVER) { console.error("❌ 错误: BARK_SERVER 未配置"); process.exit(1); }
 
 try {
     if (!fs.existsSync(FILE_PATH)) {
@@ -80,8 +71,18 @@ function checkAndNotify(subs) {
 }
 
 function sendBarkNotification(sub, timeDesc) {
-    const title = encodeURIComponent(`续费提醒: ${sub.name}`);
+    const title = encodeURIComponent(`订阅续费提醒(${timeDesc})`);
     const content = encodeURIComponent(`${sub.name} 将于 ${timeDesc} 扣费：${sub.currency} ${sub.price}`);
-    const url = `${BARK_SERVER}/${BARK_KEY}/${title}/${content}`;
-    https.get(url).on('error', (e) => console.error(`推送失败: ${e.message}`));
+    
+    // 2. 增强 URL 拼接健壮性：处理可能多出的斜杠
+    const baseUrl = BARK_SERVER.endsWith('/') ? BARK_SERVER.slice(0, -1) : BARK_SERVER;
+    
+    // 3. 找回图标和分组：这能显著提升手机端视觉识别度
+    const icon = `https://logo.clearbit.com/${sub.name.toLowerCase().replace(/\s/g,'')}.com?size=128&fallback=https://ui-avatars.com/api/?name=${sub.name}`;
+    const url = `${baseUrl}/${BARK_KEY}/${title}/${content}?group=SubTrack&icon=${icon}&sound=calypso`;
+    console.log(`🚀 正在推送: ${sub.name}...`);
+    https.get(url, (res) => {
+        if (res.statusCode === 200) console.log(`✅ ${sub.name} 通知成功`);
+        else console.error(`⚠️ ${sub.name} 通知失败，状态码: ${res.statusCode}`);
+    }).on('error', (e) => console.error(`❌ 推送请求异常: ${e.message}`));
 }
