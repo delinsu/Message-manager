@@ -1,7 +1,12 @@
 {
-  "name": "subtrack-checker",
+  "name": "subtrack-plus",
   "version": "1.0.0",
+  "description": "Subscription tracking with AES encryption and Bark notifications",
+  "main": "daily_check.js",
   "dependencies": {
     "crypto-js": "^4.1.1"
+  },
+  "engines": {
+    "node": ">=16.0.0"
   }
 }

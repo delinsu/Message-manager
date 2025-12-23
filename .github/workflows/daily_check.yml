@@ -2,11 +2,11 @@ name: Daily Subscription Check
 
 on:
   schedule:
-    - cron: '30 0 * * *' # 北京时间 08:30
-  workflow_dispatch:      # 允许手动在 Action 页面点击测试
+    - cron: '30 0 * * *' # 北京时间 08:30 (UTC 00:30)
+  workflow_dispatch:      # 支持手动触发测试
 
 jobs:
-  check:
+  run-check:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
@@ -16,14 +16,13 @@ jobs:
         uses: actions/setup-node@v3
         with:
           node-version: '18'
-          # 删除了 cache: 'npm' 这一行，避免报错
 
-      - name: Install Dependencies
-        # 即使没有 package.json，此命令也会直接安装我们需要的库
+      - name: Install CryptoJS
         run: npm install crypto-js
 
-      - name: Run Daily Check
+      - name: Execute Daily Logic
         env:
           MASTER_KEY: ${{ secrets.MASTER_KEY }}
           BARK_KEY: ${{ secrets.BARK_KEY }}
+          BARK_SERVER: ${{ secrets.BARK_SERVER }}
         run: node daily_check.js
