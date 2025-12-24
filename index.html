@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MessageTrack</title>
+    <title>SubTrack Pro</title>
     <link href="https://cdn.jsdelivr.net/npm/daisyui@4.4.19/dist/full.min.css" rel="stylesheet" type="text/css" />
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
@@ -11,6 +11,7 @@
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
         body { font-family: 'Inter', sans-serif; background-color: #f8fafc; }
+        .card-compact .card-body { padding: 1rem; }
     </style>
 </head>
 <body>
@@ -20,13 +21,12 @@
     
     <div class="drawer-content flex flex-col min-h-screen">
         <!-- 导航栏 -->
-        <div class="navbar bg-base-100 shadow-sm px-4 lg:px-8">
+        <div class="navbar bg-base-100 shadow-sm px-4 lg:px-8 sticky top-0 z-40">
             <div class="flex-1 text-xl font-bold tracking-tight flex items-center gap-2">
                 <div class="bg-primary p-2 rounded-lg text-white">
                     <i data-lucide="layers" class="w-6 h-6"></i>
                 </div>
-                MessageTrack
-                <!-- 这里的状态指示灯很有用 -->
+                SubTrack
                 <div id="sync-status" class="badge badge-ghost badge-sm gap-1 ml-2 opacity-50">
                     <i data-lucide="cloud" class="w-3 h-3"></i> 待命
                 </div>
@@ -61,17 +61,45 @@
                 </div>
             </div>
 
-            <!-- 操作区 -->
-            <div class="flex items-center justify-between">
-                <h2 class="text-lg font-bold">我的订阅列表</h2>
-                <button class="btn btn-primary btn-sm" onclick="add_modal.showModal()">
-                    <i data-lucide="plus" class="w-4 h-4"></i> 添加
-                </button>
+            <!-- 控制栏：搜索、筛选、排序 -->
+            <div class="flex flex-col md:flex-row gap-4 justify-between items-center bg-white p-4 rounded-xl shadow-sm">
+                <!-- 搜索 -->
+                <div class="relative w-full md:w-64">
+                    <span class="absolute inset-y-0 left-0 flex items-center pl-3">
+                        <i data-lucide="search" class="w-4 h-4 text-gray-400"></i>
+                    </span>
+                    <input type="text" id="search-input" placeholder="搜索订阅..." class="input input-bordered input-sm w-full pl-10" oninput="updateUI()">
+                </div>
+
+                <!-- Tabs 筛选 -->
+                <div class="join">
+                    <button class="join-item btn btn-sm btn-active" data-filter="all" onclick="setFilter('all', this)">全部</button>
+                    <button class="join-item btn btn-sm" data-filter="upcoming" onclick="setFilter('upcoming', this)">30天内</button>
+                    <button class="join-item btn btn-sm" data-filter="year" onclick="setFilter('year', this)">年度</button>
+                </div>
+
+                <!-- 排序与添加 -->
+                <div class="flex gap-2 w-full md:w-auto">
+                    <select id="sort-select" class="select select-bordered select-sm flex-grow md:flex-grow-0" onchange="updateUI()">
+                        <option value="date_asc">按扣费日期 (近->远)</option>
+                        <option value="price_desc">按价格 (高->低)</option>
+                        <option value="name">按名称</option>
+                    </select>
+                    <button class="btn btn-primary btn-sm" onclick="add_modal.showModal()">
+                        <i data-lucide="plus" class="w-4 h-4"></i> 添加
+                    </button>
+                </div>
             </div>
 
             <!-- 列表区 -->
             <div id="subscription-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 pb-20">
-                <!-- 由渲染函数填充 -->
+                <!-- 内容由 updateUI 动态填充 -->
+            </div>
+            
+            <!-- 空状态提示 -->
+            <div id="empty-state" class="hidden text-center py-10 text-gray-400">
+                <i data-lucide="inbox" class="w-12 h-12 mx-auto mb-2 opacity-20"></i>
+                <p class="text-sm">没有找到匹配的订阅</p>
             </div>
         </main>
     </div>
@@ -79,7 +107,7 @@
     <!-- 侧边栏：配置页 -->
     <div class="drawer-side z-50">
         <label for="settings-drawer" class="drawer-overlay"></label>
-        <div class="menu p-6 w-85 min-h-full bg-base-100 text-base-content border-l border-gray-200">
+        <div class="menu p-6 w-80 lg:w-96 min-h-full bg-base-100 text-base-content border-l border-gray-200">
             <div class="flex justify-between items-center mb-6">
                 <h2 class="text-xl font-bold flex items-center gap-2">
                     <i data-lucide="settings-2"></i> 同步设置
@@ -94,7 +122,7 @@
                 </div>
                 <div class="form-control">
                     <label class="label"><span class="label-text font-bold text-xs uppercase">仓库 (Username/Repo)</span></label>
-                    <input type="text" id="gh-repo" placeholder="ocoocoo/my-subs" class="input input-sm input-bordered w-full" />
+                    <input type="text" id="gh-repo" placeholder="username/repo" class="input input-sm input-bordered w-full" />
                 </div>
                 <div class="form-control">
                     <label class="label"><span class="label-text font-bold text-xs uppercase">加密密码 (Master Key)</span></label>
@@ -107,10 +135,10 @@
                     </button>
                 </div>
 
-                <div class="alert alert-info text-[11px] leading-relaxed py-2 shadow-none border-none bg-blue-50 text-blue-800">
+                <div class="alert alert-info text-[11px] leading-relaxed py-2 shadow-sm bg-blue-50 text-blue-800 border border-blue-100">
                     <i data-lucide="info" class="w-4 h-4 mt-1"></i>
                     <div>
-                        信息保存在本地 LocalStorage。更改后点击保存将重新尝试从 GitHub 抓取最新数据。
+                        数据将加密保存在您的 GitHub 仓库中。请妥善保管 Master Key。
                     </div>
                 </div>
             </div>
@@ -118,12 +146,12 @@
     </div>
 </div>
 
-<!-- Modal 保持不变 -->
+<!-- Modal：添加订阅 -->
 <dialog id="add_modal" class="modal">
     <div class="modal-box">
         <h3 class="font-bold text-lg mb-4">新订阅</h3>
         <div class="space-y-4">
-            <input type="text" id="sub-name" placeholder="名称 (如 Gemini)" class="input input-bordered w-full" />
+            <input type="text" id="sub-name" placeholder="名称 (如 Spotify)" class="input input-bordered w-full" />
             <div class="flex gap-2">
                 <input type="number" id="sub-price" placeholder="价格" class="input input-bordered flex-grow" />
                 <select id="sub-currency" class="select select-bordered w-24">
@@ -132,7 +160,10 @@
                     <option>HKD</option>
                 </select>
             </div>
-            <input type="date" id="sub-date" class="input input-bordered w-full" />
+            <div class="form-control">
+                <label class="label"><span class="label-text-alt">首次扣费日期 (系统会自动推算下次日期)</span></label>
+                <input type="date" id="sub-date" class="input input-bordered w-full" />
+            </div>
             <select id="sub-period" class="select select-bordered w-full">
                 <option value="month">每月付款 (Monthly)</option>
                 <option value="year">每年付款 (Yearly)</option>
@@ -147,67 +178,171 @@
 
 <script>
     let subscriptions = [];
+    let currentFilter = 'all'; // all, upcoming, year
     const statusEl = document.getElementById('sync-status');
 
     lucide.createIcons();
 
-    // 核心 1：更新 UI 汇总卡片和列表
+    // 辅助工具：计算实际的下一次扣费日期（同步后端的逻辑）
+    function calculateBillDetails(sub) {
+        let billDate = new Date(sub.date);
+        const now = new Date();
+        now.setHours(0, 0, 0, 0);
+        
+        // 自动滚动日期到未来
+        let prevDate = new Date(billDate); 
+        while (billDate < now) {
+            prevDate = new Date(billDate); // 记录上个周期
+            if (sub.period === 'month') {
+                billDate.setMonth(billDate.getMonth() + 1);
+            } else if (sub.period === 'year') {
+                billDate.setFullYear(billDate.getFullYear() + 1);
+            } else {
+                break; 
+            }
+        }
+        
+        // 计算进度条百分比
+        const totalCycle = billDate - prevDate;
+        const elapsed = now - prevDate;
+        let progress = 0;
+        if(totalCycle > 0) {
+            progress = Math.min(100, Math.max(0, (elapsed / totalCycle) * 100));
+        }
+        // 如果是全新订阅(还没开始)，进度为0
+        if(billDate.getTime() === new Date(sub.date).getTime() && billDate > now) {
+            progress = 0;
+        }
+
+        const diffDays = Math.ceil((billDate - now) / (1000 * 60 * 60 * 24));
+        
+        return { nextDate: billDate, diffDays, progress };
+    }
+
+    // 交互：设置筛选 Tab
+    function setFilter(filterType, btn) {
+        currentFilter = filterType;
+        // 更新按钮样式
+        document.querySelectorAll('.join-item').forEach(b => b.classList.remove('btn-active'));
+        btn.classList.add('btn-active');
+        updateUI();
+    }
+
+    // 核心 1：全新的 Update UI (支持搜索、筛选、排序、进度条)
     function updateUI() {
         const container = document.getElementById('subscription-list');
+        const searchVal = document.getElementById('search-input').value.toLowerCase();
+        const sortType = document.getElementById('sort-select').value;
+        
         container.innerHTML = '';
-        let total = 0, upcoming = 0;
-        const now = new Date();
-
-        subscriptions.forEach((sub, index) => {
-            const billDate = new Date(sub.date);
-            const diffDays = Math.ceil((billDate - now) / (1000 * 60 * 60 * 24));
-            const isExpired = diffDays < 0;
+        
+        let total = 0, upcomingCount = 0;
+        
+        // 1. 预处理数据（计算日期）
+        const processedSubs = subscriptions.map((sub, index) => {
+            const details = calculateBillDetails(sub);
+            // 统计逻辑
             if (sub.period === 'year') total += sub.price / 12; else total += parseFloat(sub.price);
-            if (diffDays >= 0 && diffDays <= 30) upcoming++;
-
-            const card = document.createElement('div');
-			const imgUrl = `https://logo.clearbit.com/${sub.name.toLowerCase().replace(/\s/g,'')}.com?size=64`;
-			const fallbackUrl = `https://ui-avatars.com/api/?name=${sub.name}&background=random`;
-            card.className = "card bg-white shadow-sm border border-gray-100 p-4 transition-all hover:shadow-md";
-            card.innerHTML = `
-                <div class="flex items-center gap-3">
-                    <img src="${imgUrl}" 
-						onerror="this.src='${fallbackUrl}'" 
-						class="w-10 h-10 rounded-lg object-cover bg-gray-100">
-                    <div class="flex-grow">
-                        <div class="flex justify-between"><h4 class="font-bold text-sm">${sub.name}</h4><span class="text-xs font-bold text-primary">${sub.currency} ${sub.price}</span></div>
-                        <div class="text-[10px] text-gray-500">${isExpired ? '已过期' : diffDays + ' 天后扣费'}</div>
-                    </div>
-                    <button class="btn btn-ghost btn-xs text-error" onclick="deleteSubscription(${index})"><i data-lucide="trash-2" class="w-3 h-3"></i></button>
-                </div>
-            `;
-            container.appendChild(card);
+            if (details.diffDays <= 30) upcomingCount++;
+            
+            return { ...sub, ...details, originalIndex: index };
         });
 
+        // 2. 筛选 (Search & Tab)
+        let filtered = processedSubs.filter(item => {
+            const matchesSearch = item.name.toLowerCase().includes(searchVal);
+            if(!matchesSearch) return false;
+
+            if (currentFilter === 'upcoming') return item.diffDays <= 30;
+            if (currentFilter === 'year') return item.period === 'year';
+            return true; // all
+        });
+
+        // 3. 排序
+        filtered.sort((a, b) => {
+            if (sortType === 'date_asc') return a.diffDays - b.diffDays;
+            if (sortType === 'price_desc') return b.price - a.price;
+            if (sortType === 'name') return a.name.localeCompare(b.name);
+            return 0;
+        });
+
+        // 4. 渲染
+        if (filtered.length === 0) {
+            document.getElementById('empty-state').classList.remove('hidden');
+        } else {
+            document.getElementById('empty-state').classList.add('hidden');
+            
+            filtered.forEach((item) => {
+                const card = document.createElement('div');
+                card.className = "card bg-white shadow-sm border border-gray-100 p-4 transition-all hover:shadow-md relative overflow-hidden group";
+                
+                // 动态颜色：剩余少于3天变红，少于7天变黄
+                let dateColorClass = "text-gray-500";
+                let progressColorClass = "progress-primary";
+                if(item.diffDays <= 3) { dateColorClass = "text-error font-bold"; progressColorClass = "progress-error"; }
+                else if(item.diffDays <= 7) { dateColorClass = "text-warning font-bold"; progressColorClass = "progress-warning"; }
+
+                const imgUrl = `https://logo.clearbit.com/${item.name.toLowerCase().replace(/\s/g,'')}.com?size=64`;
+                const fallbackUrl = `https://ui-avatars.com/api/?name=${item.name}&background=random`;
+
+                card.innerHTML = `
+                    <div class="flex items-start gap-3 z-10 relative">
+                        <img src="${imgUrl}" 
+                             onerror="this.src='${fallbackUrl}'" 
+                             class="w-10 h-10 rounded-lg object-contain bg-gray-50 border border-gray-100">
+                        <div class="flex-grow min-w-0">
+                            <div class="flex justify-between items-start">
+                                <h4 class="font-bold text-sm truncate pr-2">${item.name}</h4>
+                                <span class="text-sm font-bold text-gray-800 tracking-tight">${item.currency} ${item.price}</span>
+                            </div>
+                            <div class="flex justify-between items-center mt-1">
+                                <div class="text-[11px] ${dateColorClass}">
+                                    ${item.diffDays === 0 ? '今天扣费' : item.diffDays + ' 天后'} 
+                                    <span class="text-gray-300 font-normal">(${item.nextDate.toISOString().slice(5,10)})</span>
+                                </div>
+                                <div class="badge badge-xs text-[9px] py-1 h-auto bg-gray-100 text-gray-500 border-none uppercase">${item.period}</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 进度条 -->
+                    <div class="mt-3 relative w-full h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                        <div class="absolute top-0 left-0 h-full ${progressColorClass} opacity-80 rounded-full transition-all duration-500" style="width: ${item.progress}%"></div>
+                    </div>
+                    
+                    <!-- 悬浮删除按钮 -->
+                    <button class="absolute top-2 right-2 p-1 text-gray-300 hover:text-error opacity-0 group-hover:opacity-100 transition-opacity" onclick="deleteSubscription(${item.originalIndex})">
+                        <i data-lucide="trash-2" class="w-4 h-4"></i>
+                    </button>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        // 更新仪表盘数据
         document.getElementById('total-monthly').innerText = `¥ ${total.toFixed(2)}`;
-        document.getElementById('upcoming-count').innerText = upcoming;
+        document.getElementById('upcoming-count').innerText = upcomingCount;
         document.getElementById('active-count').innerText = subscriptions.length;
         lucide.createIcons();
     }
 
-    // 核心 2：侧边栏保存按钮交互
+    // --- 以下为保持不变的后端交互逻辑 ---
+
     function saveConfig() {
         const token = document.getElementById('gh-token').value;
         const repo = document.getElementById('gh-repo').value;
         const key = document.getElementById('master-key').value;
 
-        if(!token || !repo || !key) return alert('请完整填写');
+        if(!token || !repo || !key) return alert('请完整填写配置');
 
         localStorage.setItem('gh_token', token);
         localStorage.setItem('gh_repo', repo);
         localStorage.setItem('master_key', key);
         
-        // 自动关闭并拉取一次数据
         document.getElementById('settings-drawer').checked = false;
         fetchDataFromServer();
     }
 
-    // 核心 3：静默获取数据
     async function fetchDataFromServer() {
         const token = localStorage.getItem('gh_token');
         const repo = localStorage.getItem('gh_repo');
@@ -220,38 +355,42 @@
             return;
         }
 
-        statusEl.innerHTML = '<span class="loading loading-spinner loading-xs"></span> 同步中...';
+        statusEl.innerHTML = '<span class="loading loading-spinner loading-xs"></span> 同步中';
         
         try {
             const apiPath = `https://api.github.com/repos/${repo}/contents/data/subscriptions.json.enc`;
-            const res = await fetch(apiPath, { headers: { Authorization: `token ${token}` } });
+            // 添加时间戳防止缓存
+            const res = await fetch(`${apiPath}?t=${new Date().getTime()}`, { headers: { Authorization: `token ${token}` } });
             
             if (res.status === 404) {
                 statusEl.innerHTML = '<i data-lucide="check" class="w-3 h-3"></i> 云端全新';
             } else {
                 const fileData = await res.json();
-                const encrypted = atob(fileData.content);
+                const encrypted = atob(fileData.content.replace(/\n/g, ''));
                 const bytes = CryptoJS.AES.decrypt(encrypted, key);
-                subscriptions = JSON.parse(bytes.toString(CryptoJS.enc.Utf8));
+                const decryptedStr = bytes.toString(CryptoJS.enc.Utf8);
+                
+                if(!decryptedStr) throw new Error('Decryption failed');
+                
+                subscriptions = JSON.parse(decryptedStr);
                 statusEl.innerHTML = '<i data-lucide="cloud-check" class="w-3 h-3"></i> 已就绪';
             }
         } catch (e) {
-            statusEl.innerHTML = '<i data-lucide="alert-triangle" class="w-3 h-3"></i> 密钥错';
+            console.error(e);
+            statusEl.innerHTML = '<i data-lucide="lock" class="w-3 h-3"></i> 解密/网络失败';
             statusEl.className = "badge badge-error badge-sm gap-1 ml-2";
         }
-        updateUI();
+        updateUI(); // 拿到数据后刷新UI
         lucide.createIcons();
     }
 
-    // 核心 4：自动保存（Add/Delete 之后触发）
     async function autoSyncToServer() {
         const token = localStorage.getItem('gh_token');
         const repo = localStorage.getItem('gh_repo');
         const key = localStorage.getItem('master_key');
-
         if (!token) return;
 
-        statusEl.innerHTML = '<span class="loading loading-spinner loading-xs"></span> 云端保存中...';
+        statusEl.innerHTML = '<span class="loading loading-spinner loading-xs"></span> 保存中';
 
         const dataStr = JSON.stringify(subscriptions);
         const encrypted = CryptoJS.AES.encrypt(dataStr, key).toString();
@@ -265,7 +404,7 @@
                 method: 'PUT',
                 headers: { Authorization: `token ${token}`, 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    message: `Auto-sync ${new Date().getTime()}`,
+                    message: `Sync ${new Date().toISOString().split('T')[0]}`,
                     content: btoa(encrypted),
                     sha: sha
                 })
@@ -277,7 +416,6 @@
         lucide.createIcons();
     }
 
-    // 交互逻辑：添加
     function addSubscription() {
         const sub = {
             name: document.getElementById('sub-name').value,
@@ -291,26 +429,26 @@
         subscriptions.push(sub);
         updateUI();
         add_modal.close();
-        autoSyncToServer(); // 自动触发
+        
+        // 清空表单
+        document.getElementById('sub-name').value = '';
+        document.getElementById('sub-price').value = '';
+        
+        autoSyncToServer(); 
     }
 
-    // 交互逻辑：删除
     function deleteSubscription(index) {
-        if(confirm('确定删除吗？')) {
+        if(confirm('确定删除此订阅吗？')) {
             subscriptions.splice(index, 1);
             updateUI();
-            autoSyncToServer(); // 自动触发
+            autoSyncToServer(); 
         }
     }
 
-    // 核心 5：页面加载自动触发
     document.addEventListener('DOMContentLoaded', () => {
-        // 读取 LocalStorage 到表单
         document.getElementById('gh-token').value = localStorage.getItem('gh_token') || '';
         document.getElementById('gh-repo').value = localStorage.getItem('gh_repo') || '';
         document.getElementById('master-key').value = localStorage.getItem('master_key') || '';
-        
-        // 自动拉取
         fetchDataFromServer();
     });
 
