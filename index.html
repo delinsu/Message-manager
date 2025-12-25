@@ -185,27 +185,37 @@
 
     // 辅助工具：计算实际的下一次扣费日期（同步后端的逻辑）
     function calculateBillDetails(sub) {
-        const now = new Date();
-        now.setHours(0, 0, 0, 0); // 强制归零时间
         let billDate = new Date(sub.date);
-        billDate.setHours(0, 0, 0, 0); // 强制归零时间
-        // 自动滚动到未来
+        const now = new Date();
+        now.setHours(0, 0, 0, 0);
+        
+        // 自动滚动日期到未来
         let prevDate = new Date(billDate); 
         while (billDate < now) {
-            prevDate = new Date(billDate);
-            if (sub.period === 'month') billDate.setMonth(billDate.getMonth() + 1);
-            else if (sub.period === 'year') billDate.setFullYear(billDate.getFullYear() + 1);
-            else break; 
+            prevDate = new Date(billDate); // 记录上个周期
+            if (sub.period === 'month') {
+                billDate.setMonth(billDate.getMonth() + 1);
+            } else if (sub.period === 'year') {
+                billDate.setFullYear(billDate.getFullYear() + 1);
+            } else {
+                break; 
+            }
         }
-        // 计算天数差：(目标 - 现在) / 一天毫秒数
-        const diffDays = Math.round((billDate - now) / (1000 * 60 * 60 * 24));
         
-        // 计算进度条
+        // 计算进度条百分比
         const totalCycle = billDate - prevDate;
         const elapsed = now - prevDate;
         let progress = 0;
-        if(totalCycle > 0) progress = Math.min(100, Math.max(0, (elapsed / totalCycle) * 100));
-        if(billDate.getTime() === new Date(sub.date).setHours(0,0,0,0) && billDate > now) progress = 0;
+        if(totalCycle > 0) {
+            progress = Math.min(100, Math.max(0, (elapsed / totalCycle) * 100));
+        }
+        // 如果是全新订阅(还没开始)，进度为0
+        if(billDate.getTime() === new Date(sub.date).getTime() && billDate > now) {
+            progress = 0;
+        }
+
+        const diffDays = Math.ceil((billDate - now) / (1000 * 60 * 60 * 24));
+        
         return { nextDate: billDate, diffDays, progress };
     }
 
@@ -220,33 +230,43 @@
 
     // 核心 1：全新的 Update UI (支持搜索、筛选、排序、进度条)
     function updateUI() {
-        
         const container = document.getElementById('subscription-list');
         const searchVal = document.getElementById('search-input').value.toLowerCase();
         const sortType = document.getElementById('sort-select').value;
         
         container.innerHTML = '';
+        
         let total = 0, upcomingCount = 0;
         
+        // 1. 预处理数据（计算日期）
         const processedSubs = subscriptions.map((sub, index) => {
             const details = calculateBillDetails(sub);
+            // 统计逻辑
             if (sub.period === 'year') total += sub.price / 12; else total += parseFloat(sub.price);
-            if (details.diffDays >= 0 && details.diffDays <= 30) upcomingCount++;
+            if (details.diffDays <= 30) upcomingCount++;
+            
             return { ...sub, ...details, originalIndex: index };
         });
-        const filtered = processedSubs.filter(item => {
-            if (!item.name.toLowerCase().includes(searchVal)) return false;
-            if (currentFilter === 'month') return item.diffDays <= 30; 
+
+        // 2. 筛选 (Search & Tab)
+        let filtered = processedSubs.filter(item => {
+            const matchesSearch = item.name.toLowerCase().includes(searchVal);
+            if(!matchesSearch) return false;
+
+            if (currentFilter === 'upcoming') return item.diffDays <= 30;
             if (currentFilter === 'year') return item.period === 'year';
-            if (currentFilter === 'expired') return false; 
-            return true; 
+            return true; // all
         });
+
+        // 3. 排序
         filtered.sort((a, b) => {
             if (sortType === 'date_asc') return a.diffDays - b.diffDays;
             if (sortType === 'price_desc') return b.price - a.price;
             if (sortType === 'name') return a.name.localeCompare(b.name);
             return 0;
         });
+
+        // 4. 渲染
         if (filtered.length === 0) {
             document.getElementById('empty-state').classList.remove('hidden');
         } else {
@@ -254,56 +274,52 @@
             
             filtered.forEach((item) => {
                 const card = document.createElement('div');
-                card.className = "card bg-white shadow-sm border border-gray-100 p-4 transition-all hover:shadow-md group";
+                card.className = "card bg-white shadow-sm border border-gray-100 p-4 transition-all hover:shadow-md relative overflow-hidden group";
                 
-                // 颜色状态：今天红，3天内红，7天内黄
-                let dateBadge = "bg-gray-100 text-gray-500";
-                let progressColor = "bg-primary";
-                if (item.diffDays === 0) { dateBadge = "bg-error text-white font-bold animate-pulse"; progressColor = "bg-error"; }
-                else if (item.diffDays <= 3) { dateBadge = "bg-error/10 text-error font-bold"; progressColor = "bg-error"; }
-                else if (item.diffDays <= 7) { dateBadge = "bg-warning/20 text-warning-content font-bold"; progressColor = "bg-warning"; }
-                // 核心：UI 布局优化，解决重叠
+                // 动态颜色：剩余少于3天变红，少于7天变黄
+                let dateColorClass = "text-gray-500";
+                let progressColorClass = "progress-primary";
+                if(item.diffDays <= 3) { dateColorClass = "text-error font-bold"; progressColorClass = "progress-error"; }
+                else if(item.diffDays <= 7) { dateColorClass = "text-warning font-bold"; progressColorClass = "progress-warning"; }
+
                 const imgUrl = `https://logo.clearbit.com/${item.name.toLowerCase().replace(/\s/g,'')}.com?size=64`;
-                const fallbackUrl = `https://ui-avatars.com/api/?name=${item.name}&background=random&color=fff`;
+                const fallbackUrl = `https://ui-avatars.com/api/?name=${item.name}&background=random`;
+
                 card.innerHTML = `
-                    <div class="flex items-start gap-3 mb-3">
-                        <img src="${imgUrl}" onerror="this.src='${fallbackUrl}'" 
-                             class="w-12 h-12 rounded-xl object-contain bg-gray-50 border border-gray-100 shrink-0">
+                    <div class="flex items-start gap-3 z-10 relative">
+                        <img src="${imgUrl}" 
+                             onerror="this.src='${fallbackUrl}'" 
+                             class="w-10 h-10 rounded-lg object-contain bg-gray-50 border border-gray-100">
                         <div class="flex-grow min-w-0">
                             <div class="flex justify-between items-start">
-                                <h4 class="font-bold text-base truncate" title="${item.name}">${item.name}</h4>
-                                <span class="font-bold text-base tracking-tight">${item.currency} ${item.price}</span>
+                                <h4 class="font-bold text-sm truncate pr-2">${item.name}</h4>
+                                <span class="text-sm font-bold text-gray-800 tracking-tight">${item.currency} ${item.price}</span>
                             </div>
-                            <div class="flex items-center gap-2 mt-1">
-                                <span class="badge badge-xs border-none py-2 px-2 ${dateBadge}">
-                                    ${item.diffDays === 0 ? '今天扣费' : item.diffDays + ' 天后'}
-                                </span>
-                                <span class="text-[10px] text-gray-400">/ ${item.period === 'year' ? '年' : '月'}</span>
+                            <div class="flex justify-between items-center mt-1">
+                                <div class="text-[11px] ${dateColorClass}">
+                                    ${item.diffDays === 0 ? '今天扣费' : item.diffDays + ' 天后'} 
+                                    <span class="text-gray-300 font-normal">(${item.nextDate.toISOString().slice(5,10)})</span>
+                                </div>
+                                <div class="badge badge-xs text-[9px] py-1 h-auto bg-gray-100 text-gray-500 border-none uppercase">${item.period}</div>
                             </div>
                         </div>
                     </div>
                     
-                    <div class="w-full h-1.5 bg-gray-100 rounded-full overflow-hidden mb-4">
-                        <div class="h-full ${progressColor} opacity-80 rounded-full transition-all duration-500" style="width: ${item.progress}%"></div>
+                    <!-- 进度条 -->
+                    <div class="mt-3 relative w-full h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                        <div class="absolute top-0 left-0 h-full ${progressColorClass} opacity-80 rounded-full transition-all duration-500" style="width: ${item.progress}%"></div>
                     </div>
                     
-                    <!-- 底部操作栏：彻底分开 -->
-                    <div class="flex justify-between items-center text-xs text-gray-400 border-t border-gray-50 pt-3">
-                        <span class="font-mono">${item.nextDate.toISOString().slice(0,10)}</span>
-                        <div class="flex gap-2">
-                             <!-- 这里调用新的 openEditModal -->
-                            <button class="btn btn-xs btn-ghost hover:bg-gray-100" onclick="openEditModal(${item.originalIndex})">
-                                <i data-lucide="edit-2" class="w-3 h-3"></i> 编辑
-                            </button>
-                            <button class="btn btn-xs btn-ghost text-error hover:bg-error/10" onclick="deleteSubscription(${item.originalIndex})">
-                                <i data-lucide="trash-2" class="w-3 h-3"></i> 删除
-                            </button>
-                        </div>
-                    </div>
+                    <!-- 悬浮删除按钮 -->
+                    <button class="absolute top-2 right-2 p-1 text-gray-300 hover:text-error opacity-0 group-hover:opacity-100 transition-opacity" onclick="deleteSubscription(${item.originalIndex})">
+                        <i data-lucide="trash-2" class="w-4 h-4"></i>
+                    </button>
                 `;
                 container.appendChild(card);
             });
         }
+
+        // 更新仪表盘数据
         document.getElementById('total-monthly').innerText = `¥ ${total.toFixed(2)}`;
         document.getElementById('upcoming-count').innerText = upcomingCount;
         document.getElementById('active-count').innerText = subscriptions.length;
@@ -400,32 +416,7 @@
         lucide.createIcons();
     }
 
-    // 打开新增窗口
-    function openAddModal() {
-        document.getElementById('edit-index').value = "-1";
-        document.getElementById('modal-title').innerText = "新建订阅";
-        document.getElementById('sub-name').value = "";
-        document.getElementById('sub-price').value = "";
-        document.getElementById('sub-date').valueAsDate = new Date();
-        sub_modal.showModal();
-    }
-    // 打开编辑窗口
-    function openEditModal(index) {
-        const sub = subscriptions[index];
-        document.getElementById('edit-index').value = index;
-        document.getElementById('modal-title').innerText = "编辑订阅";
-        
-        document.getElementById('sub-name').value = sub.name;
-        document.getElementById('sub-price').value = sub.price;
-        document.getElementById('sub-currency').value = sub.currency || 'CNY';
-        document.getElementById('sub-date').value = sub.date;
-        document.getElementById('sub-period').value = sub.period;
-        
-        sub_modal.showModal();
-    }
-    // 保存逻辑（合并了新增和修改）
-    function saveSubscription() {
-        const index = parseInt(document.getElementById('edit-index').value);
+    function addSubscription() {
         const sub = {
             name: document.getElementById('sub-name').value,
             price: document.getElementById('sub-price').value,
@@ -433,15 +424,17 @@
             date: document.getElementById('sub-date').value,
             period: document.getElementById('sub-period').value
         };
-        if (!sub.name || !sub.price || !sub.date) return alert("请填写完整信息");
-        if (index === -1) {
-            subscriptions.push(sub); // 新增
-        } else {
-            subscriptions[index] = sub; // 修改
-        }
+        if (!sub.name || !sub.price || !sub.date) return;
+        
+        subscriptions.push(sub);
         updateUI();
-        sub_modal.close();
-        autoSyncToServer();
+        add_modal.close();
+        
+        // 清空表单
+        document.getElementById('sub-name').value = '';
+        document.getElementById('sub-price').value = '';
+        
+        autoSyncToServer(); 
     }
 
     function deleteSubscription(index) {
